@@ -3,6 +3,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { supabase } from '@/db/supabase';
 import { Profile, Post, Reel } from '@/types';
 import { useAuth } from '@/contexts/AuthContext';
+import { useSettings } from '@/contexts/SettingsContext';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -40,10 +41,12 @@ export default function ProfilePage() {
   const [counts, setCounts] = useState({ posts: 0, followers: 0, following: 0, likes: 0 });
   const [isQRFlipped, setIsQRFlipped] = useState(false);
   const [showThemePicker, setShowThemePicker] = useState(false);
+  const [adminTab, setAdminTab] = useState<'ring' | 'bg'>('bg');
   const navigate = useNavigate();
 
   const isOwnProfile = currentUser?.username === username || !username || username === 'me';
   const isAdmin = currentUser?.role === 'admin';
+  const { globalBgColor, updateGlobalBgColor } = useSettings();
 
   const THEME_PRESETS = [
     { label: 'TikTok',     value: 'linear-gradient(45deg, #fe2c55, #25f4ee, #fe2c55)' },
@@ -56,6 +59,19 @@ export default function ProfilePage() {
     { label: 'Green',      value: 'linear-gradient(45deg, #11998e, #38ef7d)' },
     { label: 'Fire',       value: 'linear-gradient(45deg, #ff4e00, #ec9f05)' },
     { label: 'Ice',        value: 'linear-gradient(45deg, #74ebd5, #acb6e5)' },
+  ];
+
+  const BG_PRESETS = [
+    { label: 'Pure Black',   value: '#000000' },
+    { label: 'Deep Navy',    value: '#0a0e1a' },
+    { label: 'Dark Slate',   value: '#0f172a' },
+    { label: 'Charcoal',     value: '#1a1a1a' },
+    { label: 'Dark Brown',   value: '#1a0a00' },
+    { label: 'Deep Purple',  value: '#0d001a' },
+    { label: 'Forest Night', value: '#001a0a' },
+    { label: 'Deep Red',     value: '#1a0000' },
+    { label: 'Midnight Blue','value': '#00001a' },
+    { label: 'Dark Teal',    value: '#001a1a' },
   ];
 
   const handleSaveThemeColor = async (colorValue: string) => {
@@ -453,34 +469,70 @@ export default function ProfilePage() {
                        <DialogHeader>
                          <DialogTitle className="flex items-center gap-2">
                            <Palette className="w-4 h-4 text-pink-400" />
-                           Theme Colour
+                           App Theme
                            <span className="ml-auto text-[10px] bg-pink-600/20 text-pink-400 border border-pink-600/30 px-2 py-0.5 rounded-full font-semibold tracking-wide">ADMIN</span>
                          </DialogTitle>
                        </DialogHeader>
-                       <p className="text-xs text-zinc-400 -mt-2">Choose the profile ring gradient. This applies globally to all users' view of this profile.</p>
-                       <div className="grid grid-cols-2 gap-2 mt-2">
-                         {THEME_PRESETS.map((preset) => (
-                           <button
-                             key={preset.value}
-                             onClick={() => handleSaveThemeColor(preset.value)}
-                             className={cn(
-                               "flex items-center gap-3 p-3 rounded-xl border transition-all active:scale-95",
-                               profile?.profile_color === preset.value
-                                 ? "border-pink-500 bg-zinc-800"
-                                 : "border-zinc-800 hover:border-zinc-600 bg-zinc-900"
-                             )}
-                           >
-                             <div
-                               className="w-8 h-8 rounded-full shrink-0"
-                               style={{ background: preset.value }}
-                             />
-                             <span className="text-xs font-medium text-zinc-300 text-balance">{preset.label}</span>
-                             {profile?.profile_color === preset.value && (
-                               <span className="ml-auto text-pink-400 text-xs">✓</span>
-                             )}
-                           </button>
-                         ))}
+
+                       {/* Tab switcher */}
+                       <div className="flex gap-1 bg-zinc-900 rounded-lg p-1 mt-1">
+                         <button
+                           onClick={() => setAdminTab('bg')}
+                           className={cn("flex-1 text-xs font-semibold py-1.5 rounded-md transition-all",
+                             adminTab === 'bg' ? "bg-zinc-700 text-white" : "text-zinc-500 hover:text-zinc-300")}
+                         >Background</button>
+                         <button
+                           onClick={() => setAdminTab('ring')}
+                           className={cn("flex-1 text-xs font-semibold py-1.5 rounded-md transition-all",
+                             adminTab === 'ring' ? "bg-zinc-700 text-white" : "text-zinc-500 hover:text-zinc-300")}
+                         >Profile Ring</button>
                        </div>
+
+                       {adminTab === 'bg' ? (
+                         <>
+                           <p className="text-xs text-zinc-400">Change the app-wide background colour. Visible to ALL users in real time.</p>
+                           <div className="grid grid-cols-2 gap-2 mt-1">
+                             {BG_PRESETS.map((preset) => (
+                               <button
+                                 key={preset.value}
+                                 onClick={async () => { await updateGlobalBgColor(preset.value); setShowThemePicker(false); }}
+                                 className={cn(
+                                   "flex items-center gap-3 p-3 rounded-xl border transition-all active:scale-95",
+                                   globalBgColor === preset.value
+                                     ? "border-pink-500 bg-zinc-800"
+                                     : "border-zinc-800 hover:border-zinc-600 bg-zinc-900"
+                                 )}
+                               >
+                                 <div className="w-8 h-8 rounded-full shrink-0 border border-zinc-600" style={{ background: preset.value }} />
+                                 <span className="text-xs font-medium text-zinc-300 text-balance">{preset.label}</span>
+                                 {globalBgColor === preset.value && <span className="ml-auto text-pink-400 text-xs">✓</span>}
+                               </button>
+                             ))}
+                           </div>
+                         </>
+                       ) : (
+                         <>
+                           <p className="text-xs text-zinc-400">Change the profile avatar ring gradient.</p>
+                           <div className="grid grid-cols-2 gap-2 mt-1">
+                             {THEME_PRESETS.map((preset) => (
+                               <button
+                                 key={preset.value}
+                                 onClick={() => handleSaveThemeColor(preset.value)}
+                                 className={cn(
+                                   "flex items-center gap-3 p-3 rounded-xl border transition-all active:scale-95",
+                                   profile?.profile_color === preset.value
+                                     ? "border-pink-500 bg-zinc-800"
+                                     : "border-zinc-800 hover:border-zinc-600 bg-zinc-900"
+                                 )}
+                               >
+                                 <div className="w-8 h-8 rounded-full shrink-0" style={{ background: preset.value }} />
+                                 <span className="text-xs font-medium text-zinc-300 text-balance">{preset.label}</span>
+                                 {profile?.profile_color === preset.value && <span className="ml-auto text-pink-400 text-xs">✓</span>}
+                               </button>
+                             ))}
+                           </div>
+                         </>
+                       )}
                      </DialogContent>
                    </Dialog>
                  </>

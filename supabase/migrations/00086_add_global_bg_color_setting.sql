@@ -1,0 +1,1 @@
+INSERT INTO app_settings (setting_key, setting_value) VALUES ('global_bg_color', '#000000') ON CONFLICT (setting_key) DO NOTHING;

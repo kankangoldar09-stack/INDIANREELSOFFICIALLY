@@ -3,6 +3,8 @@ import { useAuth } from './AuthContext';
 import { supabase } from '@/db/supabase';
 
 interface SettingsContextType {
+  globalBgColor: string;
+  updateGlobalBgColor: (color: string) => Promise<void>;
   fontSize: string;
   updateFontSize: (size: string) => Promise<void>;
   defaultVideoQuality: string;
@@ -57,6 +59,7 @@ const SettingsContext = createContext<SettingsContextType | undefined>(undefined
 
 export function SettingsProvider({ children }: { children: React.ReactNode }) {
   const { profile, refreshProfile } = useAuth();
+  const [globalBgColor, setGlobalBgColor] = useState('#000000');
   const [fontSize, setFontSize] = useState(profile?.font_size || '16px');
   const [defaultVideoQuality, setDefaultVideoQuality] = useState(profile?.default_video_quality || 'Auto');
   const [dataSaverMode, setDataSaverMode] = useState(profile?.data_saver_mode || false);
@@ -163,9 +166,64 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     }
   }, [profile]);
 
+  // ── Load global bg colour from app_settings on mount (public read) ──
+  useEffect(() => {
+    (supabase as any)
+      .from('app_settings')
+      .select('setting_value')
+      .eq('setting_key', 'global_bg_color')
+      .maybeSingle()
+      .then(({ data }: any) => {
+        const color = data?.setting_value || '#000000';
+        setGlobalBgColor(color);
+        applyBgColor(color);
+      });
+  }, []);
+
+  const applyBgColor = (hex: string) => {
+    const root = document.documentElement;
+    // Convert hex → HSL for shadcn --background token
+    let r = 0, g = 0, b = 0;
+    if (hex.length === 4) {
+      r = parseInt(hex[1] + hex[1], 16);
+      g = parseInt(hex[2] + hex[2], 16);
+      b = parseInt(hex[3] + hex[3], 16);
+    } else if (hex.length === 7) {
+      r = parseInt(hex.substring(1, 3), 16);
+      g = parseInt(hex.substring(3, 5), 16);
+      b = parseInt(hex.substring(5, 7), 16);
+    }
+    const rn = r / 255, gn = g / 255, bn = b / 255;
+    const max = Math.max(rn, gn, bn), min = Math.min(rn, gn, bn);
+    let h = 0, s = 0;
+    const l = (max + min) / 2;
+    if (max !== min) {
+      const d = max - min;
+      s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+      switch (max) {
+        case rn: h = (gn - bn) / d + (gn < bn ? 6 : 0); break;
+        case gn: h = (bn - rn) / d + 2; break;
+        case bn: h = (rn - gn) / d + 4; break;
+      }
+      h /= 6;
+    }
+    const hsl = `${Math.round(h * 360)} ${Math.round(s * 100)}% ${Math.round(l * 100)}%`;
+    root.style.setProperty('--background', hsl);
+    // Keep foreground readable: if background is dark keep white text, else dark
+    root.style.setProperty('--foreground', l < 0.5 ? '0 0% 100%' : '0 0% 0%');
+  };
+
   useEffect(() => {
     document.documentElement.style.fontSize = fontSize;
   }, [fontSize]);
+
+  const updateGlobalBgColor = async (color: string) => {
+    setGlobalBgColor(color);
+    applyBgColor(color);
+    await (supabase as any)
+      .from('app_settings')
+      .upsert({ setting_key: 'global_bg_color', setting_value: color }, { onConflict: 'setting_key' });
+  };
 
   const updateFontSize = async (size: string) => {
     if (!profile) return;
@@ -335,6 +393,8 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
   return (
     <SettingsContext.Provider 
       value={{ 
+        globalBgColor,
+        updateGlobalBgColor,
         fontSize, 
         updateFontSize, 
         defaultVideoQuality, 
