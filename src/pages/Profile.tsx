@@ -39,9 +39,36 @@ export default function ProfilePage() {
   const [showFullScreenProfile, setShowFullScreenProfile] = useState(false);
   const [counts, setCounts] = useState({ posts: 0, followers: 0, following: 0, likes: 0 });
   const [isQRFlipped, setIsQRFlipped] = useState(false);
+  const [showThemePicker, setShowThemePicker] = useState(false);
   const navigate = useNavigate();
 
   const isOwnProfile = currentUser?.username === username || !username || username === 'me';
+  const isAdmin = currentUser?.role === 'admin';
+
+  const THEME_PRESETS = [
+    { label: 'TikTok',     value: 'linear-gradient(45deg, #fe2c55, #25f4ee, #fe2c55)' },
+    { label: 'Saffron',    value: 'linear-gradient(45deg, #FF9933, #FFFFFF, #138808)' },
+    { label: 'Gold',       value: 'linear-gradient(45deg, #f7971e, #ffd200)' },
+    { label: 'Neon Pink',  value: 'linear-gradient(45deg, #ff007f, #ff6ec7)' },
+    { label: 'Ocean',      value: 'linear-gradient(45deg, #00c6ff, #0072ff)' },
+    { label: 'Sunset',     value: 'linear-gradient(45deg, #f83600, #f9d423)' },
+    { label: 'Purple',     value: 'linear-gradient(45deg, #9b59b6, #e91e8c)' },
+    { label: 'Green',      value: 'linear-gradient(45deg, #11998e, #38ef7d)' },
+    { label: 'Fire',       value: 'linear-gradient(45deg, #ff4e00, #ec9f05)' },
+    { label: 'Ice',        value: 'linear-gradient(45deg, #74ebd5, #acb6e5)' },
+  ];
+
+  const handleSaveThemeColor = async (colorValue: string) => {
+    if (!currentUser?.id) return;
+    try {
+      await (supabase as any).from('profiles').update({ profile_color: colorValue }).eq('id', currentUser.id);
+      setProfile((prev: any) => ({ ...prev, profile_color: colorValue }));
+      setShowThemePicker(false);
+      toast.success('Theme colour updated!');
+    } catch {
+      toast.error('Failed to update theme colour');
+    }
+  };
 
   useEffect(() => {
     fetchProfile();
@@ -408,6 +435,56 @@ export default function ProfilePage() {
                >
                  <Bookmark className="w-5 h-5" />
                </Button>
+
+               {/* Admin-only: Theme Colour Picker */}
+               {isAdmin && (
+                 <>
+                   <Button
+                     size="icon"
+                     className="bg-zinc-900 hover:bg-zinc-800 h-11 w-11 rounded-md transition-all active:scale-95"
+                     onClick={() => setShowThemePicker(true)}
+                     title="Change Theme Colour (Admin Only)"
+                   >
+                     <Palette className="w-5 h-5 text-pink-400" />
+                   </Button>
+
+                   <Dialog open={showThemePicker} onOpenChange={setShowThemePicker}>
+                     <DialogContent className="max-w-[calc(100%-2rem)] md:max-w-sm bg-zinc-950 border border-zinc-800 text-white">
+                       <DialogHeader>
+                         <DialogTitle className="flex items-center gap-2">
+                           <Palette className="w-4 h-4 text-pink-400" />
+                           Theme Colour
+                           <span className="ml-auto text-[10px] bg-pink-600/20 text-pink-400 border border-pink-600/30 px-2 py-0.5 rounded-full font-semibold tracking-wide">ADMIN</span>
+                         </DialogTitle>
+                       </DialogHeader>
+                       <p className="text-xs text-zinc-400 -mt-2">Choose the profile ring gradient. This applies globally to all users' view of this profile.</p>
+                       <div className="grid grid-cols-2 gap-2 mt-2">
+                         {THEME_PRESETS.map((preset) => (
+                           <button
+                             key={preset.value}
+                             onClick={() => handleSaveThemeColor(preset.value)}
+                             className={cn(
+                               "flex items-center gap-3 p-3 rounded-xl border transition-all active:scale-95",
+                               profile?.profile_color === preset.value
+                                 ? "border-pink-500 bg-zinc-800"
+                                 : "border-zinc-800 hover:border-zinc-600 bg-zinc-900"
+                             )}
+                           >
+                             <div
+                               className="w-8 h-8 rounded-full shrink-0"
+                               style={{ background: preset.value }}
+                             />
+                             <span className="text-xs font-medium text-zinc-300 text-balance">{preset.label}</span>
+                             {profile?.profile_color === preset.value && (
+                               <span className="ml-auto text-pink-400 text-xs">✓</span>
+                             )}
+                           </button>
+                         ))}
+                       </div>
+                     </DialogContent>
+                   </Dialog>
+                 </>
+               )}
              </>
            ) : (
              <>

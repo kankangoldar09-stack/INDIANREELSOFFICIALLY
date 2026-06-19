@@ -659,7 +659,7 @@ function ReelItem({
     setLastTap(now);
 
     if (timeSinceLast < 300) {
-      // ── Double tap: cancel the pending single-tap and handle like ──
+      // ── Double tap: cancel pending single-tap and like ──
       if (singleTapTimerRef.current) {
         clearTimeout(singleTapTimerRef.current);
         singleTapTimerRef.current = null;
@@ -671,21 +671,10 @@ function ReelItem({
         handleDoubleTap(e.clientX - rect.left, e.clientY - rect.top);
       }
     } else {
-      // ── Single tap: toggle immersive UI / play-pause ──
+      // ── Single tap: toggle play/pause only — never hide UI ──
       singleTapTimerRef.current = setTimeout(() => {
         singleTapTimerRef.current = null;
-        if (!uiHidden) {
-          // First tap → hide UI (immersive fullscreen)
-          setUiHidden(true);
-          if (uiHideTimer.current) clearTimeout(uiHideTimer.current);
-          // Auto-restore after 4s
-          uiHideTimer.current = setTimeout(() => setUiHidden(false), 4000);
-        } else {
-          // Second tap while hidden → restore UI
-          setUiHidden(false);
-          if (uiHideTimer.current) clearTimeout(uiHideTimer.current);
-          togglePlay();
-        }
+        togglePlay();
       }, 280);
     }
   };
@@ -1242,20 +1231,10 @@ function ReelItem({
 
         {globalMuted && !uiHidden && (
           <div className="absolute top-20 right-4 z-40 animate-bounce pointer-events-none">
-
-        {/* Immersive hint — shows briefly when UI is hidden */}
-        {uiHidden && (
-          <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-40 pointer-events-none"
-            style={{ animation: 'notifSlideIn 0.3s ease forwards' }}>
-            <div className="bg-black/50 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/10">
-              <span className="text-white/60 text-[10px] font-medium tracking-wide">Tap to show controls</span>
+            <div className="bg-black/60 backdrop-blur-md px-4 py-2 rounded-full border border-white/20 flex items-center gap-2">
+              <VolumeX className="w-4 h-4 text-white" />
+              <span className="text-white text-[10px] font-bold uppercase tracking-wider">Tap to Unmute</span>
             </div>
-          </div>
-        )}
-             <div className="bg-black/60 backdrop-blur-md px-4 py-2 rounded-full border border-white/20 flex items-center gap-2">
-               <VolumeX className="w-4 h-4 text-white" />
-               <span className="text-white text-[10px] font-bold uppercase tracking-wider">Tap to Unmute</span>
-             </div>
           </div>
         )}
 
