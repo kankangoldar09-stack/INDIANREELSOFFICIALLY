@@ -4,7 +4,7 @@ import { cn } from '@/lib/utils';
 
 export function MainLayout() {
   const location = useLocation();
-  const isFullScreenPage = ['/', '/messages', '/reels', '/stories', '/audio'].some(path => 
+  const isFullScreenPage = ['/', '/messages', '/reels', '/stories', '/audio', '/profile'].some(path => 
     location.pathname === path || (path !== '/' && location.pathname.startsWith(path))
   );
 
