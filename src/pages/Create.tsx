@@ -1240,22 +1240,21 @@ export default function Create() {
           </div>
         )}
 
-        {/* Media area */}
+        {/* Media area — outer wrapper fills all available space, inner box respects format ratio */}
+        <div className="flex-1 flex items-center justify-center bg-black overflow-hidden min-h-0">
         <div
           ref={mediaContainerRef}
           className={cn(
-            "flex-1 relative flex items-center justify-center overflow-hidden",
+            "relative flex items-center justify-center overflow-hidden",
             isTextEditing && 'absolute inset-0 z-40',
-            activeEffect && `effect-${activeEffect}`
+            activeEffect && `effect-${activeEffect}`,
+            activeFormat === 'free'  && 'w-full h-full',
+            activeFormat === '9:16'  && 'h-full w-auto aspect-[9/16]',
+            activeFormat === '1:1'   && 'h-full w-auto aspect-square',
+            activeFormat === '4:3'   && 'w-full h-auto aspect-[4/3]',
+            activeFormat === '16:9'  && 'w-full h-auto aspect-video',
           )}
-          style={{
-            background: bgColor,
-            ...(activeFormat === '9:16'  ? { aspectRatio: '9/16',  flex: 'none', maxHeight: '100%', margin: 'auto' } :
-                activeFormat === '1:1'   ? { aspectRatio: '1/1',   flex: 'none', maxHeight: '100%', margin: 'auto' } :
-                activeFormat === '4:3'   ? { aspectRatio: '4/3',   flex: 'none', maxHeight: '100%', margin: 'auto' } :
-                activeFormat === '16:9'  ? { aspectRatio: '16/9',  flex: 'none', maxHeight: '100%', margin: 'auto' } :
-                {}),
-          }}
+          style={{ background: bgColor }}
         >
           {mediaFiles[selectedMediaIndex]?.type.startsWith('video') ? (
             <video
@@ -1434,6 +1433,7 @@ export default function Create() {
             <div className={`absolute inset-0 pointer-events-none effect-${activeEffect}`} style={{ zIndex: 9 }} />
           )}
         </div>
+        </div>{/* end outer media wrapper */}
 
         {/* ── TIMELINE PANEL (when open) ── */}
         {!isTextEditing && showTimeline && (
