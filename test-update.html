@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Test Profile Update</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <h1>Test Profile Update</h1>
+  <div id="status"></div>
+  <button onclick="testLogin()">1. Login</button>
+  <button onclick="testUpdate()">2. Update Profile</button>
+  <button onclick="testRead()">3. Read Profile</button>
+  
+  <script>
+    const supabaseUrl = 'https://kpcqxvhvojfjczryjrva.supabase.co';
+    const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtwY3F4dmh2b2pmamN6cnlqcnZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQxMDAyODUsImV4cCI6MjA4OTY3NjI4NX0.W2BMXYYmCWCH8sfIODXzQdlJqUtxpMZD51TOC1muZn0';
+    const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+    
+    async function testLogin() {
+      const status = document.getElementById('status');
+      status.innerHTML = 'Logging in...';
+      
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: 'jeetyt09@miaoda.com',
+        password: 'jeetyt09'
+      });
+      
+      if (error) {
+        status.innerHTML = `Login Error: ${error.message}`;
+        console.error('Login error:', error);
+      } else {
+        status.innerHTML = `Login Success! User ID: ${data.user.id}`;
+        console.log('Login success:', data);
+      }
+    }
+    
+    async function testUpdate() {
+      const status = document.getElementById('status');
+      status.innerHTML = 'Updating profile...';
+      
+      const { data: session } = await supabase.auth.getSession();
+      if (!session.session) {
+        status.innerHTML = 'Please login first!';
+        return;
+      }
+      
+      const userId = session.session.user.id;
+      console.log('Updating for user:', userId);
+      
+      const { data, error } = await supabase
+        .from('profiles')
+        .update({ 
+          full_name: 'JEETYT09 UPDATED',
+          bio: 'Test bio update',
+          city: 'Delhi'
+        })
+        .eq('id', userId)
+        .select();
+      
+      if (error) {
+        status.innerHTML = `Update Error: ${JSON.stringify(error)}`;
+        console.error('Update error:', error);
+      } else {
+        status.innerHTML = `Update Success! ${JSON.stringify(data)}`;
+        console.log('Update success:', data);
+      }
+    }
+    
+    async function testRead() {
+      const status = document.getElementById('status');
+      status.innerHTML = 'Reading profile...';
+      
+      const { data: session } = await supabase.auth.getSession();
+      if (!session.session) {
+        status.innerHTML = 'Please login first!';
+        return;
+      }
+      
+      const userId = session.session.user.id;
+      
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
+      
+      if (error) {
+        status.innerHTML = `Read Error: ${error.message}`;
+        console.error('Read error:', error);
+      } else {
+        status.innerHTML = `Profile: ${JSON.stringify(data, null, 2)}`;
+        console.log('Profile:', data);
+      }
+    }
+  </script>
+</body>
+</html>

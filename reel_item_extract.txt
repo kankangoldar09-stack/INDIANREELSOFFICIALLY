@@ -1,0 +1,622 @@
+   187	  const [liked, setLiked] = useState(reel.is_liked || false);
+   188	  const [likesCount, setLikesCount] = useState(reel.likes_count || 0);
+   189	  const [commentsCount, setCommentsCount] = useState(reel.comments_count || 0);
+   190	  const [viewsCount, setViewsCount] = useState(reel.views_count || 0);
+   191	  const [isFollowing, setIsFollowing] = useState(false);
+   192	  const [muted, setMuted] = useState(false);
+   193	  const [paused, setPaused] = useState(false);
+   194	  const [isCommentsOpen, setIsCommentsOpen] = useState(false);
+   195	  const [showFullScreenProfile, setShowFullScreenProfile] = useState(false);
+   196	  const [showShareSheet, setShowShareSheet] = useState(false);
+   197	  const [showFlag, setShowFlag] = useState(false);
+   198	  const [lastTap, setLastTap] = useState(0);
+   199	  const [isSaved, setIsSaved] = useState(reel.is_saved || false);
+   200	  const videoRef = useRef<HTMLVideoElement>(null);
+   201	  const { defaultVideoQuality, dataSaverMode, autoplayLimit } = useSettings();
+   202	  const [autoplayStopped, setAutoplayStopped] = useState(false);
+   203	  const [showCC, setShowCC] = useState(true);
+   204	  const [ccLang, setCcLang] = useState<'en' | 'hi'>('hi');
+   205	  const [currentTime, setCurrentTime] = useState(0);
+   206	  const [currentQuality, setCurrentQuality] = useState(defaultVideoQuality || '1080p');
+   207	  const [isHolding, setIsHolding] = useState(false);
+   208	  const [isAutoScrollEnabled, setIsAutoScrollEnabled] = useState(false);
+   209	  const [showThumbsUp, setShowThumbsUp] = useState(false);
+   210	  const holdTimer = useRef<any>(null);
+   211	
+   212	  const audioDisplayName = reel.source 
+   213	    ? (reel.source.audio_title || `${reel.source.profiles?.username} · Original Audio`)
+   214	    : (reel.audio_title || `${reel.profiles?.username} · Original Audio`);
+   215	
+   216	  useEffect(() => {
+   217	    if (profile && reel.owner_id) {
+   218	      checkFollowStatus();
+   219	      checkIsSaved();
+   220	    }
+   221	  }, [profile, reel.owner_id]);
+   222	
+   223	  const checkIsSaved = async () => {
+   224	    if (!profile) return;
+   225	    const { data } = await (supabase as any)
+   226	      .from('saved_items')
+   227	      .select('id')
+   228	      .eq('user_id', profile.id)
+   229	      .eq('reel_id', reel.id)
+   230	      .maybeSingle();
+   231	    setIsSaved(!!data);
+   232	  };
+   233	
+   234	  const checkFollowStatus = async () => {
+   235	    const { data } = await (supabase as any)
+   236	      .from('follows')
+   237	      .select('id')
+   238	      .eq('follower_id', profile?.id)
+   239	      .eq('following_id', reel.owner_id)
+   240	      .maybeSingle();
+   241	    setIsFollowing(!!data);
+   242	  };
+   243	
+   244	  const handleFollow = async (e: React.MouseEvent) => {
+   245	    e.stopPropagation();
+   246	    if (!profile) return toast.error('Please login to follow');
+   247	    if (profile.id === reel.owner_id) return;
+   248	
+   249	    try {
+   250	      if (isFollowing) {
+   251	        await (supabase as any).from('follows').delete()
+   252	          .eq('follower_id', profile.id)
+   253	          .eq('following_id', reel.owner_id);
+   254	        setIsFollowing(false);
+   255	        toast.success('Unfollowed');
+   256	      } else {
+   257	        await (supabase as any).from('follows').insert({ 
+   258	          follower_id: profile.id, 
+   259	          following_id: reel.owner_id 
+   260	        });
+   261	        setIsFollowing(true);
+   262	        toast.success('Following');
+   263	      }
+   264	    } catch (error) {
+   265	      toast.error('Failed to update follow status');
+   266	    }
+   267	  };
+   268	
+   269	  const startHold = useCallback(() => {
+   270	    holdTimer.current = setTimeout(() => {
+   271	      if (videoRef.current) {
+   272	        videoRef.current.playbackRate = 2;
+   273	        setIsHolding(true);
+   274	      }
+   275	    }, 200);
+   276	  }, []);
+   277	
+   278	  const stopHold = useCallback(() => {
+   279	    if (holdTimer.current) {
+   280	      clearTimeout(holdTimer.current);
+   281	      holdTimer.current = null;
+   282	    }
+   283	    if (videoRef.current) {
+   284	      videoRef.current.playbackRate = 1;
+   285	      setIsHolding(false);
+   286	    }
+   287	  }, []);
+   288	
+   289	  const handleTap = (e: React.MouseEvent) => {
+   290	    // Only toggle play if we were not holding
+   291	    if (isHolding) return;
+   292	
+   293	    const now = Date.now();
+   294	    if (now - lastTap < 300) {
+   295	      handleDoubleTap();
+   296	    } else {
+   297	      togglePlay();
+   298	    }
+   299	    setLastTap(now);
+   300	  };
+   301	
+   302	  const handleDoubleTap = () => {
+   303	    if (!liked) {
+   304	      toggleLike();
+   305	    }
+   306	  };
+   307	
+   308	  const handleSave = async (e: React.MouseEvent) => {
+   309	    e.stopPropagation();
+   310	    if (!profile) return toast.error('Please login to save');
+   311	    
+   312	    try {
+   313	      const { data: existing } = await (supabase as any)
+   314	        .from('saved_items')
+   315	        .select('*')
+   316	        .eq('user_id', profile.id)
+   317	        .eq('reel_id', reel.id)
+   318	        .maybeSingle();
+   319	
+   320	      if (existing) {
+   321	        await (supabase as any).from('saved_items').delete().eq('id', existing.id);
+   322	        toast.success('Removed from saved');
+   323	      } else {
+   324	        await (supabase as any).from('saved_items').insert({
+   325	          user_id: profile.id,
+   326	          reel_id: reel.id
+   327	        });
+   328	        toast.success('Saved to collection');
+   329	      }
+   330	    } catch (error: any) {
+   331	      toast.error('Failed to save');
+   332	    }
+   333	  };
+   334	
+   335	  const canDelete = profile?.role === 'admin' || profile?.id === reel.owner_id;
+   336	  const showViews = !hideViewsPref;
+   337	  const showLikesCount = !reel.hide_likes;
+   338	  const showComments = !reel.hide_comments;
+   339	
+   340	  const togglePlay = () => {
+   341	    if (!videoRef.current) return;
+   342	    if (videoRef.current.paused) {
+   343	      videoRef.current.play().catch(() => {});
+   344	      setPaused(false);
+   345	    } else {
+   346	      videoRef.current.pause();
+   347	      setPaused(true);
+   348	    }
+   349	  };
+   350	
+   351	  const toggleMute = (e: React.MouseEvent) => {
+   352	    e.stopPropagation();
+   353	    setMuted(!muted);
+   354	  };
+   355	
+   356	  const toggleLike = async () => {
+   357	    if (!profile) {
+   358	      toast.error('Please login to like');
+   359	      return;
+   360	    }
+   361	
+   362	    const newLikedState = !liked;
+   363	    setLiked(newLikedState);
+   364	
+   365	    if (newLikedState) {
+   366	      setLikesCount(prev => prev + 1);
+   367	      setShowFlag(true);
+   368	      setShowThumbsUp(true);
+   369	      setTimeout(() => {
+   370	        setShowFlag(false);
+   371	        setShowThumbsUp(false);
+   372	      }, 1800);
+   373	      try {
+   374	        await (supabase as any).from('likes').insert({
+   375	          user_id: profile.id,
+   376	          reel_id: reel.id
+   377	        });
+   378	      } catch (error) {
+   379	        setLiked(false);
+   380	        setLikesCount(prev => prev - 1);
+   381	      }
+   382	    } else {
+   383	      setLikesCount(prev => prev - 1);
+   384	      try {
+   385	        await (supabase as any).from('likes').delete()
+   386	          .eq('user_id', profile.id)
+   387	          .eq('reel_id', reel.id);
+   388	      } catch (error) {
+   389	        setLiked(true);
+   390	        setLikesCount(prev => prev + 1);
+   391	      }
+   392	    }
+   393	  };
+   394	
+   395	  const handleRecordView = async () => {
+   396	    if (!profile) return;
+   397	    try {
+   398	      const { data, error } = await (supabase as any).from('views').insert({
+   399	        user_id: profile.id,
+   400	        reel_id: reel.id
+   401	      }).select().single();
+   402	
+   403	      if (!error && data) {
+   404	        setViewsCount((prev: number) => prev + 1);
+   405	      }
+   406	    } catch (error) {
+   407	      // Duplicate view likely
+   408	    }
+   409	  };
+   410	
+   411	  useEffect(() => {
+   412	    const observer = new IntersectionObserver(
+   413	      (entries) => {
+   414	        entries.forEach((entry) => {
+   415	          if (entry.isIntersecting) {
+   416	            // Check session watch count against limit
+   417	            if (sessionWatchedCount >= autoplayLimit || (dataSaverMode && sessionWatchedCount >= 3)) {
+   418	              setAutoplayStopped(true);
+   419	              videoRef.current?.pause();
+   420	              setPaused(true);
+   421	              return;
+   422	            }
+   423	
+   424	            videoRef.current?.play().catch(() => {});
+   425	            setPaused(false);
+   426	            sessionWatchedCount += 1;
+   427	            
+   428	            // Record view
+   429	            handleRecordView();
+   430	            
+   431	            // Log to watch history
+   432	            if (profile) {
+   433	              (supabase as any).from('watch_history').insert({
+   434	                user_id: profile.id,
+   435	                reel_id: reel.id
+   436	              }).then();
+   437	            }
+   438	          } else {
+   439	            videoRef.current?.pause();
+   440	            setPaused(true);
+   441	          }
+   442	        });
+   443	      },
+   444	      { threshold: 0.8 }
+   445	    );
+   446	
+   447	    if (videoRef.current) {
+   448	      observer.observe(videoRef.current);
+   449	    }
+   450	
+   451	    return () => {
+   452	      if (videoRef.current) {
+   453	        observer.unobserve(videoRef.current);
+   454	      }
+   455	    };
+   456	  }, [reel.id, profile, autoplayLimit, dataSaverMode]);
+   457	
+   458	  return (
+   459	    <div className="relative h-screen w-full snap-start flex-shrink-0 bg-black flex items-center justify-center overflow-hidden">
+   460	      <div className="relative h-full w-full bg-black overflow-hidden">
+   461	        {/* Immersive Video */}
+   462	        <video
+   463	          ref={videoRef}
+   464	          src={reel.video_url}
+   465	          className="w-full h-full object-cover bg-black"
+   466	          loop={!isAutoScrollEnabled}
+   467	          playsInline
+   468	          muted={muted}
+   469	          onPointerDown={startHold}
+   470	          onPointerUp={stopHold}
+   471	          onPointerLeave={stopHold}
+   472	          onPointerCancel={stopHold}
+   473	          onClick={handleTap}
+   474	          onEnded={() => {
+   475	            if (isAutoScrollEnabled) {
+   476	              onNext();
+   477	            }
+   478	          }}
+   479	          onTimeUpdate={() => {
+   480	            if (videoRef.current) {
+   481	               setCurrentTime(videoRef.current.currentTime);
+   482	            }
+   483	          }}
+   484	        />
+   485	
+   486	        {/* Top Navigation */}
+   487	        <div className="absolute top-0 left-0 right-0 z-50 flex items-center justify-between p-4 bg-gradient-to-b from-black/60 to-transparent">
+   488	          <button 
+   489	            onClick={() => navigate(-1)} 
+   490	            className="p-2 hover:bg-white/10 rounded-full transition-colors"
+   491	          >
+   492	            <ArrowLeft className="w-8 h-8 text-white" />
+   493	          </button>
+   494	          <div className="flex items-center gap-4">
+   495	            <button className="p-2 hover:bg-white/10 rounded-full transition-colors">
+   496	              <Camera className="w-8 h-8 text-white" />
+   497	            </button>
+   498	          </div>
+   499	        </div>
+   500	
+   501	        {showCC && reel.captions && (
+   502	          <Captions 
+   503	            captions={reel.captions} 
+   504	            currentTime={currentTime} 
+   505	            language={ccLang} 
+   506	          />
+   507	        )}
+   508	
+   509	        {isHolding && (
+   510	          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-30 bg-black/60 backdrop-blur-xl px-8 py-4 rounded-3xl border-2 border-white/30 flex flex-col items-center gap-2 animate-in fade-in zoom-in duration-200 shadow-[0_0_50px_rgba(0,0,0,0.5)]">
+   511	            <Zap className="w-12 h-12 text-yellow-400 fill-yellow-400 animate-pulse" />
+   512	            <span className="text-3xl font-black text-white italic tracking-tighter drop-shadow-lg">2X SPEED</span>
+   513	          </div>
+   514	        )}
+   515	        
+   516	        {showThumbsUp && (
+   517	          <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-50">
+   518	            <div className="animate-in fade-in zoom-in duration-300">
+   519	              <Heart className="w-32 h-32 text-white fill-white drop-shadow-[0_0_20px_rgba(255,255,255,0.8)] animate-pulse" />
+   520	            </div>
+   521	          </div>
+   522	        )}
+   523	        
+   524	        {showFlag && (
+   525	          <div className="flag-animation flex flex-col items-center gap-2">
+   526	            <div className="text-8xl filter drop-shadow-[0_0_15px_rgba(255,255,255,0.8)]">🇮🇳</div>
+   527	            <div className="brand-text text-2xl font-black bg-white/10 backdrop-blur-sm px-4 py-1 rounded-full border border-white/20">INDIA</div>
+   528	          </div>
+   529	        )}
+   530	        
+   531	        {/* Play/Pause Indicator */}
+   532	        <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-20">
+   533	          {paused && !autoplayStopped && <Pause className="w-16 h-16 text-white/50" />}
+   534	        </div>
+   535	
+   536	        {/* Right Side Actions - Stacked exactly like screenshot */}
+   537	        <div className="absolute bottom-28 right-4 flex flex-col items-center gap-6 text-white z-30">
+   538	          <div className="flex flex-col items-center gap-1 group">
+   539	            <Button 
+   540	              variant="ghost" 
+   541	              size="icon" 
+   542	              className="h-12 w-12 p-0 hover:bg-transparent transition-transform active:scale-90"
+   543	              onClick={toggleLike}
+   544	            >
+   545	              <Heart className={cn("w-10 h-10 transition-all duration-300 drop-shadow-lg", liked ? "fill-white text-white scale-110" : "text-white opacity-90")} />
+   546	            </Button>
+   547	            {showLikesCount && <span className="text-[11px] font-bold drop-shadow-lg">{likesCount.toLocaleString()}</span>}
+   548	          </div>
+   549	          
+   550	          {showComments && (
+   551	            <div className="flex flex-col items-center gap-1 group">
+   552	              <Button onClick={() => setIsCommentsOpen(true)} variant="ghost" size="icon" className="h-12 w-12 p-0 hover:bg-transparent transition-transform active:scale-90">
+   553	                <MessageCircle className="w-10 h-10 text-white opacity-90 drop-shadow-lg" />
+   554	              </Button>
+   555	              <span className="text-[11px] font-bold drop-shadow-lg">{commentsCount.toLocaleString()}</span>
+   556	            </div>
+   557	          )}
+   558	
+   559	          <div className="flex flex-col items-center gap-1 group">
+   560	            <Button variant="ghost" size="icon" className="h-12 w-12 p-0 hover:bg-transparent transition-transform active:scale-90">
+   561	              <RefreshCw className="w-10 h-10 text-white opacity-90 drop-shadow-lg" />
+   562	            </Button>
+   563	            <span className="text-[11px] font-bold drop-shadow-lg">277</span>
+   564	          </div>
+   565	
+   566	          <div className="flex flex-col items-center gap-1 group">
+   567	            <Button 
+   568	              onClick={(e) => { e.stopPropagation(); setShowShareSheet(true); }} 
+   569	              variant="ghost" 
+   570	              size="icon" 
+   571	              className="h-12 w-12 p-0 hover:bg-transparent transition-transform active:scale-90"
+   572	            >
+   573	              <Send className="w-10 h-10 text-white opacity-90 drop-shadow-lg" />
+   574	            </Button>
+   575	            <span className="text-[11px] font-bold drop-shadow-lg">1,791</span>
+   576	          </div>
+   577	          
+   578	          <div className="flex flex-col items-center gap-1 group">
+   579	            <Button onClick={handleSave} variant="ghost" size="icon" className="h-12 w-12 p-0 hover:bg-transparent transition-transform active:scale-90">
+   580	              <Bookmark className={cn("w-10 h-10 transition-all drop-shadow-lg", isSaved ? "fill-white text-white" : "text-white opacity-90")} />
+   581	            </Button>
+   582	            <span className="text-[11px] font-bold drop-shadow-lg">1,020</span>
+   583	          </div>
+   584	          
+   585	          <DropdownMenu>
+   586	            <DropdownMenuTrigger asChild>
+   587	              <Button variant="ghost" size="icon" className="h-10 w-10 p-0 hover:bg-transparent transition-transform active:scale-90">
+   588	                <MoreVertical className="w-8 h-8 text-white opacity-90 drop-shadow-lg" />
+   589	              </Button>
+   590	            </DropdownMenuTrigger>
+   591	            <DropdownMenuContent align="end" className="dark min-w-[180px] bg-black/90 backdrop-blur-xl border-white/10 rounded-2xl">
+   592	              {reel.captions && (
+   593	                <DropdownMenuSub>
+   594	                  <DropdownMenuSubTrigger className="text-sm"><Subtitles className="w-4 h-4 mr-2" />Subtitles</DropdownMenuSubTrigger>
+   595	                  <DropdownMenuPortal>
+   596	                    <DropdownMenuSubContent className="dark">
+   597	                      <DropdownMenuItem className="text-sm flex justify-between items-center" onClick={() => setShowCC(false)}>Off {!showCC && <Check className="w-4 h-4" />}</DropdownMenuItem>
+   598	                      <DropdownMenuItem className="text-sm flex justify-between items-center" onClick={() => { setShowCC(true); setCcLang('en'); }}>English {showCC && ccLang === 'en' && <Check className="w-4 h-4" />}</DropdownMenuItem>
+   599	                      <DropdownMenuItem className="text-sm flex justify-between items-center" onClick={() => { setShowCC(true); setCcLang('hi'); }}>Hindi {showCC && ccLang === 'hi' && <Check className="w-4 h-4" />}</DropdownMenuItem>
+   600	                    </DropdownMenuSubContent>
+   601	                  </DropdownMenuPortal>
+   602	                </DropdownMenuSub>
+   603	              )}
+   604	              <DropdownMenuSub>
+   605	                <DropdownMenuSubTrigger className="text-sm"><VideoIcon className="w-4 h-4 mr-2" />Quality</DropdownMenuSubTrigger>
+   606	                <DropdownMenuPortal>
+   607	                  <DropdownMenuSubContent className="dark">
+   608	                    {['4K', '2K', '1080p', '720p', '480p'].map((q) => (
+   609	                      <DropdownMenuItem key={q} className="text-sm flex justify-between items-center" onClick={() => { setCurrentQuality(q); toast.success(`Quality set to ${q}`); }}>
+   610	                        {q} {currentQuality === q && <Check className="w-4 h-4 text-primary" />}
+   611	                      </DropdownMenuItem>
+   612	                    ))}
+   613	                  </DropdownMenuSubContent>
+   614	                </DropdownMenuPortal>
+   615	              </DropdownMenuSub>
+   616	              {canDelete && (
+   617	                <DropdownMenuItem className="text-sm text-red-500" onClick={onDelete}>
+   618	                  <Trash2 className="w-4 h-4 mr-2" />Delete Reel
+   619	                </DropdownMenuItem>
+   620	              )}
+   621	            </DropdownMenuContent>
+   622	          </DropdownMenu>
+   623	
+   624	          {/* Music Disc rotating */}
+   625	          <div className="w-10 h-10 rounded-lg border-2 border-white/60 overflow-hidden animate-spin-slow">
+   626	            <img src={reel.profiles?.profile_photo_url || ''} className="w-full h-full object-cover" />
+   627	          </div>
+   628	        </div>
+   629	
+   630	        {/* Bottom Info Area */}
+   631	        <div className="absolute bottom-0 left-0 right-0 z-30 p-4 bg-gradient-to-t from-black/80 via-black/40 to-transparent">
+   632	          {/* Author info & Follow */}
+   633	          <div className="flex items-center gap-3 mb-3">
+   634	            <Link to={`/profile/${reel.profiles?.id}`} className="group relative">
+   635	              <div className="p-[2px] rounded-full bg-gradient-to-tr from-orange-500 via-pink-500 to-purple-600">
+   636	                <Avatar className="w-10 h-10 border-2 border-black">
+   637	                  <AvatarImage src={reel.profiles?.profile_photo_url || ''} />
+   638	                  <AvatarFallback className="bg-zinc-800 text-white">{reel.profiles?.username?.[0]?.toUpperCase()}</AvatarFallback>
+   639	                </Avatar>
+   640	              </div>
+   641	            </Link>
+   642	            <div className="flex items-center gap-2">
+   643	              <span className="text-white font-bold text-sm drop-shadow-md">@{reel.profiles?.username}</span>
+   644	              <VerificationBadge isVerified={reel.profiles?.is_verified} size="xs" />
+   645	              {profile?.id !== reel.owner_id && (
+   646	                <Button 
+   647	                  onClick={handleFollow}
+   648	                  variant="outline" 
+   649	                  className="h-8 px-4 py-0 text-xs font-bold text-white border-white/60 bg-white/10 hover:bg-white/20 backdrop-blur-sm rounded-lg"
+   650	                >
+   651	                  {isFollowing ? 'Following' : 'Follow'}
+   652	                </Button>
+   653	              )}
+   654	            </div>
+   655	          </div>
+   656	
+   657	          {/* Caption (The "Title") */}
+   658	          {reel.caption && (
+   659	            <p className="text-white text-[13px] line-clamp-2 mb-3 drop-shadow-md max-w-[85%]">
+   660	              {reel.caption}
+   661	            </p>
+   662	          )}
+   663	
+   664	          {/* Music info */}
+   665	          <div className="flex items-center gap-2 mb-6">
+   666	            <div className="p-1.5 bg-zinc-800/60 backdrop-blur-md rounded-full">
+   667	              <Music className="w-3 h-3 text-white" />
+   668	            </div>
+   669	            <div className="overflow-hidden w-[200px]">
+   670	              <p className="text-white text-xs font-medium animate-marquee whitespace-nowrap drop-shadow-md">
+   671	                {audioDisplayName}
+   672	              </p>
+   673	            </div>
+   674	          </div>
+   675	
+   676	          {/* Add Comment Bar */}
+   677	          <div className="flex items-center gap-3 bg-black/40 backdrop-blur-md rounded-full px-4 py-2.5 border border-white/10 mb-2">
+   678	            <Avatar className="w-6 h-6">
+   679	              <AvatarImage src={profile?.profile_photo_url || ''} />
+   680	              <AvatarFallback className="text-[10px]">{profile?.username?.[0]?.toUpperCase()}</AvatarFallback>
+   681	            </Avatar>
+   682	            <span className="text-white/60 text-xs flex-1">Add comment...</span>
+   683	          </div>
+   684	        </div>
+   685	      </div>
+   686	
+   687	      <CommentsSheet 
+   688	        open={isCommentsOpen} 
+   689	        onOpenChange={setIsCommentsOpen} 
+   690	        reelId={reel.id} 
+   691	      />
+   692	      <ShareSheet 
+   693	        open={showShareSheet} 
+   694	        onOpenChange={setShowShareSheet} 
+   695	        contentUrl={`${window.location.origin}/reels?id=${reel.id}`} 
+   696	      />
+   697	    </div>
+   698	  );
+   699	                <div className="flex items-center">
+   700	                  <Zap className={cn("w-4 h-4 mr-2", isAutoScrollEnabled ? "text-yellow-400" : "text-zinc-500")} />
+   701	                  Auto-Scroll
+   702	                </div>
+   703	                {isAutoScrollEnabled && <Check className="w-4 h-4 text-primary" />}
+   704	              </DropdownMenuItem>
+   705	
+   706	              <DropdownMenuSeparator className="bg-white/10" />
+   707	              <DropdownMenuItem className="text-sm">Report</DropdownMenuItem>
+   708	              {canDelete && (
+   709	                <DropdownMenuItem 
+   710	                  className="text-sm text-destructive focus:text-destructive"
+   711	                  onClick={onDelete}
+   712	                >
+   713	                  <Trash2 className="w-4 h-4 mr-2" />
+   714	                  Delete
+   715	                </DropdownMenuItem>
+   716	              )}
+   717	            </DropdownMenuContent>
+   718	          </DropdownMenu>
+   719	
+   720	          <div 
+   721	            className={cn(
+   722	              "w-12 h-12 rounded-full border-2 border-white/40 overflow-hidden cursor-pointer active:scale-90 transition-transform pointer-events-auto bg-zinc-800 flex items-center justify-center shadow-lg",
+   723	              !paused && "animate-spin-slow"
+   724	            )}
+   725	            onClick={(e) => {
+   726	              e.stopPropagation();
+   727	              navigate(`/audio/${reel.audio_source_id || reel.id}`);
+   728	            }}
+   729	          >
+   730	            <Avatar className="w-full h-full p-1 bg-black">
+   731	              <AvatarImage 
+   732	                src={reel.source?.profiles?.profile_photo_url || reel.profiles?.profile_photo_url || ''} 
+   733	                className="rounded-full object-cover" 
+   734	              />
+   735	              <AvatarFallback className="bg-zinc-800 text-white text-[10px]">U</AvatarFallback>
+   736	            </Avatar>
+   737	          </div>
+   738	        </div>
+   739	
+   740	        <CommentsSheet
+   741	          reelId={reel.id}
+   742	          open={isCommentsOpen}
+   743	          onOpenChange={setIsCommentsOpen}
+   744	          onCountChange={setCommentsCount}
+   745	        />
+   746	        
+   747	        {/* Bottom Info */}
+   748	        <div className="absolute bottom-10 left-4 right-20 text-white z-30">
+   749	          <div className="flex items-center gap-3 mb-4">
+   750	            <Avatar 
+   751	              className="w-10 h-10 border-2 border-white/20 cursor-pointer hover:scale-105 transition-transform shadow-lg"
+   752	              onClick={(e) => {
+   753	                e.stopPropagation();
+   754	                setShowFullScreenProfile(true);
+   755	              }}
+   756	            >
+   757	              <AvatarImage src={reel.profiles?.profile_photo_url || ''} />
+   758	              <AvatarFallback>{reel.profiles?.username?.[0]?.toUpperCase()}</AvatarFallback>
+   759	            </Avatar>
+   760	            <div className="flex flex-col">
+   761	              <div className="flex items-center gap-1.5">
+   762	                <span 
+   763	                  className="font-black text-sm drop-shadow-md cursor-pointer hover:underline"
+   764	                  onClick={(e) => {
+   765	                    e.stopPropagation();
+   766	                    navigate(`/profile/${reel.profiles?.username}`);
+   767	                  }}
+   768	                >
+   769	                  {reel.profiles?.username}
+   770	                </span>
+   771	                {reel.profiles?.is_verified && <VerificationBadge size={14} />}
+   772	              </div>
+   773	            </div>
+   774	          </div>
+   775	          
+   776	          <div 
+   777	            className="flex items-center gap-2 text-[11px] font-bold bg-black/40 backdrop-blur-xl px-4 py-2 rounded-full border border-white/10 w-fit max-w-[260px] cursor-pointer active:scale-95 transition-all hover:bg-black/60 pointer-events-auto shadow-2xl"
+   778	            onClick={(e) => {
+   779	              e.stopPropagation();
+   780	              navigate(`/audio/${reel.audio_source_id || reel.id}`);
+   781	            }}
+   782	          >
+   783	            <Music2 className="w-3.5 h-3.5 flex-shrink-0" />
+   784	            <div className="overflow-hidden whitespace-nowrap">
+   785	              <div className="animate-marquee whitespace-nowrap inline-block">
+   786	                {audioDisplayName} &nbsp;•&nbsp; {audioDisplayName} &nbsp;•&nbsp; 
+   787	              </div>
+   788	            </div>
+   789	          </div>
+   790	        </div>
+   791	      </div>
+   792	
+   793	      <FullScreenImage 
+   794	        src={reel.profiles?.profile_photo_url} 
+   795	        isOpen={showFullScreenProfile} 
+   796	        onClose={() => setShowFullScreenProfile(false)} 
+   797	      />
+   798	      <ShareSheet 
+   799	        isOpen={showShareSheet} 
+   800	        onOpenChange={setShowShareSheet} 
+   801	        url={`${window.location.origin}/reels?id=${reel.id}`} 
+   802	        mediaUrl={reel.video_url}
+   803	        title={reel.caption || 'INDIANREELS'}
+   804	        reelId={reel.id}
+   805	      />
+   806	    </div>
+   807	  );
+   808	}

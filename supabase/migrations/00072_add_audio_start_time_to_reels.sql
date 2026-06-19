@@ -1,0 +1,1 @@
+ALTER TABLE reels ADD COLUMN IF NOT EXISTS audio_start_time FLOAT DEFAULT 0;

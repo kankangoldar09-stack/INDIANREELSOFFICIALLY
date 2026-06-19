@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>INDIANREELS - Negative/Destructive Buttons</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+        }
+        .button-demo {
+            margin: 20px 0;
+            padding: 20px;
+            background: #f9fafb;
+            border-radius: 8px;
+            border: 1px solid #e5e7eb;
+        }
+        .button-title {
+            font-weight: 600;
+            margin-bottom: 12px;
+            color: #1f2937;
+        }
+        .code-block {
+            background: #1f2937;
+            color: #f3f4f6;
+            padding: 16px;
+            border-radius: 6px;
+            margin-top: 12px;
+            overflow-x: auto;
+            font-size: 14px;
+            font-family: 'Courier New', monospace;
+        }
+    </style>
+</head>
+<body class="bg-white p-8">
+    <div class="max-w-6xl mx-auto">
+        <!-- Header -->
+        <div class="text-center mb-12">
+            <h1 class="text-4xl font-bold text-gray-900 mb-2">INDIANREELS</h1>
+            <h2 class="text-2xl font-semibold text-gray-700 mb-4">Negative/Destructive Buttons Collection</h2>
+            <p class="text-gray-600">Complete HTML code examples - Ready to use!</p>
+        </div>
+
+        <!-- 1. Delete Button (Red Background) -->
+        <div class="button-demo">
+            <div class="button-title">1. Delete Button (Red Background with Icon)</div>
+            <button class="inline-flex items-center justify-center h-8 w-8 rounded-md bg-red-600 text-white hover:bg-red-700 transition-colors">
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+            </button>
+            <div class="code-block">
+&lt;button class="inline-flex items-center justify-center h-8 w-8 rounded-md bg-red-600 text-white hover:bg-red-700 transition-colors"&gt;
+  &lt;svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"&gt;
+    &lt;path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /&gt;
+  &lt;/svg&gt;
+&lt;/button&gt;
+            </div>
+        </div>
+
+        <!-- 2. Delete Button with Text -->
+        <div class="button-demo">
+            <div class="button-title">2. Delete Button with Text</div>
+            <button class="inline-flex items-center justify-center px-4 py-2 rounded-md bg-red-600 text-white font-medium hover:bg-red-700 transition-colors">
+                <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+                Delete Post
+            </button>
+            <div class="code-block">
+&lt;button class="inline-flex items-center justify-center px-4 py-2 rounded-md bg-red-600 text-white font-medium hover:bg-red-700 transition-colors"&gt;
+  &lt;svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"&gt;
+    &lt;path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /&gt;
+  &lt;/svg&gt;
+  Delete Post
+&lt;/button&gt;
+            </div>
+        </div>
+
+        <!-- 3. Cancel Button (Transparent) -->
+        <div class="button-demo">
+            <div class="button-title">3. Cancel Button (Transparent/Ghost)</div>
+            <button class="h-12 px-6 rounded-xl text-gray-700 bg-transparent hover:bg-gray-100 transition-colors font-medium">
+                Cancel
+            </button>
+            <div class="code-block">
+&lt;button class="h-12 px-6 rounded-xl text-gray-700 bg-transparent hover:bg-gray-100 transition-colors font-medium"&gt;
+  Cancel
+&lt;/button&gt;
+            </div>
+        </div>
+
+        <!-- 4. Cancel Button (Outline) -->
+        <div class="button-demo">
+            <div class="button-title">4. Cancel Button (Outline Style)</div>
+            <button class="inline-flex items-center justify-center px-4 py-2 rounded-md border border-gray-300 bg-transparent hover:bg-gray-100 transition-colors font-medium">
+                Cancel
+            </button>
+            <div class="code-block">
+&lt;button class="inline-flex items-center justify-center px-4 py-2 rounded-md border border-gray-300 bg-transparent hover:bg-gray-100 transition-colors font-medium"&gt;
+  Cancel
+&lt;/button&gt;
+            </div>
+        </div>
+
+        <!-- 5. Close Button (X Icon) -->
+        <div class="button-demo">
+            <div class="button-title">5. Close Button (X Icon)</div>
+            <button class="h-8 w-8 rounded-full bg-transparent hover:bg-gray-100 transition-colors flex items-center justify-center">
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+            <div class="code-block">
+&lt;button class="h-8 w-8 rounded-full bg-transparent hover:bg-gray-100 transition-colors flex items-center justify-center"&gt;
+  &lt;svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"&gt;
+    &lt;path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /&gt;
+  &lt;/svg&gt;
+&lt;/button&gt;
+            </div>
+        </div>
+
+        <!-- 6. Close Button with Dark Background -->
+        <div class="button-demo bg-gray-800">
+            <div class="button-title text-white">6. Close Button with Dark Background (Glassmorphism)</div>
+            <button class="w-10 h-10 rounded-full bg-black/50 backdrop-blur-sm flex items-center justify-center hover:bg-black/70 transition-colors">
+                <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+            <div class="code-block">
+&lt;button class="w-10 h-10 rounded-full bg-black/50 backdrop-blur-sm flex items-center justify-center hover:bg-black/70 transition-colors"&gt;
+  &lt;svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"&gt;
+    &lt;path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /&gt;
+  &lt;/svg&gt;
+&lt;/button&gt;
+            </div>
+        </div>
+
+        <!-- 7. Back Button (Arrow Left) -->
+        <div class="button-demo">
+            <div class="button-title">7. Back Button (Arrow Left Icon)</div>
+            <button class="h-10 w-10 rounded-md bg-transparent hover:bg-gray-100 transition-colors flex items-center justify-center">
+                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                </svg>
+            </button>
+            <div class="code-block">
+&lt;button class="h-10 w-10 rounded-md bg-transparent hover:bg-gray-100 transition-colors flex items-center justify-center"&gt;
+  &lt;svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"&gt;
+    &lt;path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /&gt;
+  &lt;/svg&gt;
+&lt;/button&gt;
+            </div>
+        </div>
+
+        <!-- 8. Back Button with Text -->
+        <div class="button-demo">
+            <div class="button-title">8. Back Button with Text</div>
+            <button class="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-transparent hover:bg-gray-100 transition-colors">
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                </svg>
+                Back
+            </button>
+            <div class="code-block">
+&lt;button class="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-transparent hover:bg-gray-100 transition-colors"&gt;
+  &lt;svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"&gt;
+    &lt;path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /&gt;
+  &lt;/svg&gt;
+  Back
+&lt;/button&gt;
+            </div>
+        </div>
+
+        <!-- 9. Remove Button (Gray) -->
+        <div class="button-demo">
+            <div class="button-title">9. Remove Button (Secondary/Gray)</div>
+            <button class="inline-flex items-center justify-center px-3 py-1.5 text-sm rounded-md bg-gray-200 text-gray-900 hover:bg-gray-300 transition-colors font-medium">
+                Remove
+            </button>
+            <div class="code-block">
+&lt;button class="inline-flex items-center justify-center px-3 py-1.5 text-sm rounded-md bg-gray-200 text-gray-900 hover:bg-gray-300 transition-colors font-medium"&gt;
+  Remove
+&lt;/button&gt;
+            </div>
+        </div>
+
+        <!-- 10. Reject Call Button -->
+        <div class="button-demo">
+            <div class="button-title">10. Reject Call Button (Large Round)</div>
+            <button class="rounded-full w-16 h-16 bg-red-600 text-white hover:bg-red-700 transition-colors flex items-center justify-center shadow-lg">
+                <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+            <div class="code-block">
+&lt;button class="rounded-full w-16 h-16 bg-red-600 text-white hover:bg-red-700 transition-colors flex items-center justify-center shadow-lg"&gt;
+  &lt;svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"&gt;
+    &lt;path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /&gt;
+  &lt;/svg&gt;
+&lt;/button&gt;
+            </div>
+        </div>
+
+        <!-- 11. Glassmorphism Delete Button -->
+        <div class="button-demo bg-gradient-to-r from-purple-500 to-pink-500">
+            <div class="button-title text-white">11. Glassmorphism Delete Button (Small)</div>
+            <button class="w-6 h-6 rounded-full bg-red-500/50 backdrop-blur-md border-none flex items-center justify-center hover:bg-red-500/70 transition-colors">
+                <svg class="h-3 w-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+            </button>
+            <div class="code-block">
+&lt;button class="w-6 h-6 rounded-full bg-red-500/50 backdrop-blur-md border-none flex items-center justify-center hover:bg-red-500/70 transition-colors"&gt;
+  &lt;svg class="h-3 w-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"&gt;
+    &lt;path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /&gt;
+  &lt;/svg&gt;
+&lt;/button&gt;
+            </div>
+        </div>
+
+        <!-- 12. Text-Only Delete Button -->
+        <div class="button-demo">
+            <div class="button-title">12. Text-Only Delete Button (Red Text)</div>
+            <button class="inline-flex items-center justify-center px-4 py-2 rounded-md bg-transparent text-red-500 hover:text-red-600 hover:bg-red-50 transition-colors font-medium">
+                Delete
+            </button>
+            <div class="code-block">
+&lt;button class="inline-flex items-center justify-center px-4 py-2 rounded-md bg-transparent text-red-500 hover:text-red-600 hover:bg-red-50 transition-colors font-medium"&gt;
+  Delete
+&lt;/button&gt;
+            </div>
+        </div>
+
+        <!-- 13. Ghost Delete Button -->
+        <div class="button-demo">
+            <div class="button-title">13. Ghost Delete Button with Icon</div>
+            <button class="h-8 w-8 rounded-md bg-transparent text-red-600 hover:bg-red-100 transition-colors flex items-center justify-center">
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+            </button>
+            <div class="code-block">
+&lt;button class="h-8 w-8 rounded-md bg-transparent text-red-600 hover:bg-red-100 transition-colors flex items-center justify-center"&gt;
+  &lt;svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"&gt;
+    &lt;path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /&gt;
+  &lt;/svg&gt;
+&lt;/button&gt;
+            </div>
+        </div>
+
+        <!-- 14. Full-Width Cancel Button -->
+        <div class="button-demo">
+            <div class="button-title">14. Full-Width Cancel Button (Mobile Optimized)</div>
+            <button class="w-full h-12 rounded-xl border border-gray-300 bg-transparent hover:bg-gray-100 transition-colors font-medium">
+                Cancel
+            </button>
+            <div class="code-block">
+&lt;button class="w-full h-12 rounded-xl border border-gray-300 bg-transparent hover:bg-gray-100 transition-colors font-medium"&gt;
+  Cancel
+&lt;/button&gt;
+            </div>
+        </div>
+
+        <!-- 15. Delete Confirmation Dialog -->
+        <div class="button-demo">
+            <div class="button-title">15. Delete Confirmation Dialog (Complete Example)</div>
+            <button onclick="document.getElementById('deleteDialog').classList.remove('hidden')" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
+                Show Delete Dialog
+            </button>
+            
+            <!-- Dialog -->
+            <div id="deleteDialog" class="hidden fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+                <div class="bg-white rounded-lg shadow-lg max-w-md w-full p-6">
+                    <!-- Header -->
+                    <h2 class="text-lg font-semibold mb-2">Are you sure?</h2>
+                    <p class="text-sm text-gray-600 mb-6">
+                        This action cannot be undone. This will permanently delete your post.
+                    </p>
+                    
+                    <!-- Footer Buttons -->
+                    <div class="flex gap-3 justify-end">
+                        <button onclick="document.getElementById('deleteDialog').classList.add('hidden')" class="px-4 py-2 rounded-md border border-gray-300 bg-transparent hover:bg-gray-100 transition-colors font-medium">
+                            Cancel
+                        </button>
+                        <button onclick="alert('Deleted!'); document.getElementById('deleteDialog').classList.add('hidden')" class="inline-flex items-center px-4 py-2 rounded-md bg-red-600 text-white hover:bg-red-700 transition-colors font-medium">
+                            <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                            Delete
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="code-block">
+&lt;div class="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4"&gt;
+  &lt;div class="bg-white rounded-lg shadow-lg max-w-md w-full p-6"&gt;
+    &lt;h2 class="text-lg font-semibold mb-2"&gt;Are you sure?&lt;/h2&gt;
+    &lt;p class="text-sm text-gray-600 mb-6"&gt;
+      This action cannot be undone. This will permanently delete your post.
+    &lt;/p&gt;
+    &lt;div class="flex gap-3 justify-end"&gt;
+      &lt;button class="px-4 py-2 rounded-md border border-gray-300 bg-transparent hover:bg-gray-100 transition-colors font-medium"&gt;
+        Cancel
+      &lt;/button&gt;
+      &lt;button class="inline-flex items-center px-4 py-2 rounded-md bg-red-600 text-white hover:bg-red-700 transition-colors font-medium"&gt;
+        &lt;svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"&gt;
+          &lt;path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /&gt;
+        &lt;/svg&gt;
+        Delete
+      &lt;/button&gt;
+    &lt;/div&gt;
+  &lt;/div&gt;
+&lt;/div&gt;
+            </div>
+        </div>
+
+        <!-- Color Reference -->
+        <div class="mt-12 p-6 bg-gray-100 rounded-lg">
+            <h3 class="text-xl font-bold mb-4">Color Classes Reference</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <h4 class="font-semibold mb-2">Red/Destructive Colors:</h4>
+                    <ul class="space-y-1 text-sm">
+                        <li><code class="bg-white px-2 py-1 rounded">bg-red-600</code> - Red background</li>
+                        <li><code class="bg-white px-2 py-1 rounded">bg-red-700</code> - Darker red (hover)</li>
+                        <li><code class="bg-white px-2 py-1 rounded">text-red-500</code> - Red text</li>
+                        <li><code class="bg-white px-2 py-1 rounded">text-red-600</code> - Darker red text</li>
+                        <li><code class="bg-white px-2 py-1 rounded">hover:bg-red-50</code> - Light red hover</li>
+                    </ul>
+                </div>
+                <div>
+                    <h4 class="font-semibold mb-2">Gray/Neutral Colors:</h4>
+                    <ul class="space-y-1 text-sm">
+                        <li><code class="bg-white px-2 py-1 rounded">bg-gray-200</code> - Light gray background</li>
+                        <li><code class="bg-white px-2 py-1 rounded">bg-gray-300</code> - Medium gray background</li>
+                        <li><code class="bg-white px-2 py-1 rounded">text-gray-600</code> - Gray text</li>
+                        <li><code class="bg-white px-2 py-1 rounded">border-gray-300</code> - Gray border</li>
+                    </ul>
+                </div>
+                <div>
+                    <h4 class="font-semibold mb-2">Transparent/Glass Effects:</h4>
+                    <ul class="space-y-1 text-sm">
+                        <li><code class="bg-white px-2 py-1 rounded">bg-black/50</code> - 50% transparent black</li>
+                        <li><code class="bg-white px-2 py-1 rounded">bg-white/10</code> - 10% transparent white</li>
+                        <li><code class="bg-white px-2 py-1 rounded">backdrop-blur-sm</code> - Small blur effect</li>
+                        <li><code class="bg-white px-2 py-1 rounded">backdrop-blur-md</code> - Medium blur effect</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="text-center mt-12 pb-8">
+            <p class="text-gray-600">Generated for <strong>INDIANREELS App</strong> - Version v551</p>
+            <p class="text-sm text-gray-500 mt-2">All buttons are responsive and mobile-optimized</p>
+        </div>
+    </div>
+</body>
+</html>

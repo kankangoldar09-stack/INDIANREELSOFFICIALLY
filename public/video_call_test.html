@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>INDIANREELS Video Call - Jitsi Meet Integration</title>
+    <script src='https://meet.jit.si/external_api.js'></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1200px;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            font-weight: 700;
+        }
+
+        .room-info {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        #meet-container {
+            width: 100%;
+            height: 600px;
+            background: #000;
+            position: relative;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 15px;
+            padding: 20px;
+            background: #f8f9fa;
+        }
+
+        .control-btn {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .control-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+        }
+
+        .control-btn.mic {
+            background: #4CAF50;
+            color: white;
+        }
+
+        .control-btn.mic.muted {
+            background: #f44336;
+        }
+
+        .control-btn.video {
+            background: #2196F3;
+            color: white;
+        }
+
+        .control-btn.video.off {
+            background: #f44336;
+        }
+
+        .control-btn.screen {
+            background: #FF9800;
+            color: white;
+        }
+
+        .control-btn.hangup {
+            background: #f44336;
+            color: white;
+            width: 70px;
+            height: 70px;
+        }
+
+        .setup-screen {
+            padding: 40px;
+            text-align: center;
+        }
+
+        .setup-screen h2 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 28px;
+        }
+
+        .setup-screen p {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 16px;
+        }
+
+        .input-group {
+            margin-bottom: 20px;
+        }
+
+        .input-group label {
+            display: block;
+            text-align: left;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 600;
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+
+        .input-group input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 14px 40px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+        }
+
+        .loading {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 18px;
+            z-index: 10;
+        }
+
+        .loading.active {
+            display: block;
+        }
+
+        .spinner {
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-top: 4px solid white;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                border-radius: 0;
+                max-width: 100%;
+            }
+
+            #meet-container {
+                height: 400px;
+            }
+
+            .header h1 {
+                font-size: 18px;
+            }
+
+            .control-btn {
+                width: 50px;
+                height: 50px;
+                font-size: 20px;
+            }
+
+            .control-btn.hangup {
+                width: 60px;
+                height: 60px;
+            }
+
+            .controls {
+                gap: 10px;
+                padding: 15px;
+            }
+        }
+
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div>
+                <h1>🇮🇳 INDIANREELS Video Call</h1>
+                <div class="room-info" id="room-info">Powered by Jitsi Meet</div>
+            </div>
+        </div>
+
+        <!-- Setup Screen -->
+        <div id="setup-screen" class="setup-screen">
+            <h2>Start a Video Call</h2>
+            <p>Enter your details to join or create a video call room</p>
+            
+            <div class="input-group">
+                <label for="display-name">Your Name</label>
+                <input type="text" id="display-name" placeholder="Enter your name" value="Guest User">
+            </div>
+
+            <div class="input-group">
+                <label for="room-name">Room Name (Optional)</label>
+                <input type="text" id="room-name" placeholder="Leave empty for auto-generated room">
+            </div>
+
+            <button class="btn-primary" onclick="startCall()">Join Call</button>
+        </div>
+
+        <!-- Video Call Container -->
+        <div id="meet-container" class="hidden">
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <p>Connecting to call...</p>
+            </div>
+        </div>
+
+        <!-- Controls -->
+        <div id="controls" class="controls hidden">
+            <button class="control-btn mic" id="mic-btn" onclick="toggleAudio()" title="Mute/Unmute">
+                🎤
+            </button>
+            <button class="control-btn video" id="video-btn" onclick="toggleVideo()" title="Camera On/Off">
+                📹
+            </button>
+            <button class="control-btn screen" onclick="toggleScreenShare()" title="Share Screen">
+                🖥️
+            </button>
+            <button class="control-btn hangup" onclick="hangUp()" title="End Call">
+                📞
+            </button>
+        </div>
+    </div>
+
+    <script>
+        let api = null;
+        let isMuted = false;
+        let isVideoOff = false;
+
+        function generateRoomName() {
+            const timestamp = Date.now();
+            const random = Math.random().toString(36).substring(2, 9);
+            return `indianreels-${timestamp}-${random}`;
+        }
+
+        function startCall() {
+            const displayName = document.getElementById('display-name').value || 'Guest User';
+            let roomName = document.getElementById('room-name').value.trim();
+            
+            if (!roomName) {
+                roomName = generateRoomName();
+            }
+
+            // Hide setup screen
+            document.getElementById('setup-screen').classList.add('hidden');
+            document.getElementById('meet-container').classList.remove('hidden');
+            document.getElementById('controls').classList.remove('hidden');
+            document.getElementById('loading').classList.add('active');
+            document.getElementById('room-info').textContent = `Room: ${roomName}`;
+
+            initializeJitsi(roomName, displayName);
+        }
+
+        function initializeJitsi(roomName, displayName) {
+            const domain = 'meet.jit.si';
+            const options = {
+                roomName: roomName,
+                width: '100%',
+                height: '100%',
+                parentNode: document.querySelector('#meet-container'),
+                configOverwrite: {
+                    prejoinConfig: { enabled: false },
+                    startWithAudioMuted: false,
+                    startWithVideoMuted: false,
+                    disableDeepLinking: true,
+                    enableWelcomePage: false,
+                    enableClosePage: false,
+                    defaultLanguage: 'en',
+                    disableInviteFunctions: false,
+                    doNotStoreRoom: true,
+                    enableNoisyMicDetection: true,
+                },
+                interfaceConfigOverwrite: {
+                    SHOW_JITSI_WATERMARK: false,
+                    SHOW_WATERMARK_FOR_GUESTS: false,
+                    SHOW_BRAND_WATERMARK: false,
+                    DISABLE_DOMINANT_SPEAKER_INDICATOR: false,
+                    DISABLE_FOCUS_INDICATOR: false,
+                    DISABLE_JOIN_LEAVE_NOTIFICATIONS: false,
+                    MOBILE_APP_PROMO: false,
+                    PROVIDER_NAME: 'INDIANREELS',
+                    TOOLBAR_BUTTONS: [
+                        'microphone',
+                        'camera',
+                        'closedcaptions',
+                        'desktop',
+                        'fullscreen',
+                        'fodeviceselection',
+                        'hangup',
+                        'profile',
+                        'chat',
+                        'recording',
+                        'livestreaming',
+                        'etherpad',
+                        'sharedvideo',
+                        'settings',
+                        'raisehand',
+                        'videoquality',
+                        'filmstrip',
+                        'invite',
+                        'feedback',
+                        'stats',
+                        'shortcuts',
+                        'tileview',
+                        'videobackgroundblur',
+                        'download',
+                        'help',
+                        'mute-everyone',
+                        'security'
+                    ],
+                    TOOLBAR_TIMEOUT: 4000,
+                    VERTICAL_FILMSTRIP: true,
+                },
+                userInfo: {
+                    displayName: displayName,
+                },
+            };
+
+            try {
+                api = new JitsiMeetExternalAPI(domain, options);
+
+                // Event listeners
+                api.on('videoConferenceJoined', () => {
+                    document.getElementById('loading').classList.remove('active');
+                    console.log('Joined the call successfully!');
+                });
+
+                api.on('videoConferenceLeft', () => {
+                    console.log('Left the call');
+                    resetToSetup();
+                });
+
+                api.on('readyToClose', () => {
+                    resetToSetup();
+                });
+
+                api.on('audioMuteStatusChanged', (data) => {
+                    isMuted = data.muted;
+                    updateMicButton();
+                });
+
+                api.on('videoMuteStatusChanged', (data) => {
+                    isVideoOff = data.muted;
+                    updateVideoButton();
+                });
+
+                api.on('participantJoined', (data) => {
+                    console.log(`${data.displayName || 'Someone'} joined the call`);
+                });
+
+                api.on('participantLeft', (data) => {
+                    console.log(`${data.displayName || 'Someone'} left the call`);
+                });
+
+            } catch (error) {
+                console.error('Failed to initialize call:', error);
+                alert('Failed to initialize call. Please try again.');
+                resetToSetup();
+            }
+        }
+
+        function toggleAudio() {
+            if (api) {
+                api.executeCommand('toggleAudio');
+            }
+        }
+
+        function toggleVideo() {
+            if (api) {
+                api.executeCommand('toggleVideo');
+            }
+        }
+
+        function toggleScreenShare() {
+            if (api) {
+                api.executeCommand('toggleShareScreen');
+            }
+        }
+
+        function hangUp() {
+            if (api) {
+                api.executeCommand('hangup');
+            }
+        }
+
+        function updateMicButton() {
+            const micBtn = document.getElementById('mic-btn');
+            if (isMuted) {
+                micBtn.classList.add('muted');
+                micBtn.textContent = '🔇';
+            } else {
+                micBtn.classList.remove('muted');
+                micBtn.textContent = '🎤';
+            }
+        }
+
+        function updateVideoButton() {
+            const videoBtn = document.getElementById('video-btn');
+            if (isVideoOff) {
+                videoBtn.classList.add('off');
+                videoBtn.textContent = '📹❌';
+            } else {
+                videoBtn.classList.remove('off');
+                videoBtn.textContent = '📹';
+            }
+        }
+
+        function resetToSetup() {
+            if (api) {
+                api.dispose();
+                api = null;
+            }
+            document.getElementById('setup-screen').classList.remove('hidden');
+            document.getElementById('meet-container').classList.add('hidden');
+            document.getElementById('controls').classList.add('hidden');
+            document.getElementById('loading').classList.remove('active');
+            document.getElementById('room-info').textContent = 'Powered by Jitsi Meet';
+            isMuted = false;
+            isVideoOff = false;
+        }
+
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', () => {
+            if (api) {
+                api.dispose();
+            }
+        });
+    </script>
+</body>
+</html>

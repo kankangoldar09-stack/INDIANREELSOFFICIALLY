@@ -1,0 +1,2 @@
+ALTER TABLE posts ADD COLUMN captions JSONB;
+ALTER TABLE reels ADD COLUMN captions JSONB;
