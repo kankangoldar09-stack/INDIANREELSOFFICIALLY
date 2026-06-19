@@ -318,7 +318,7 @@ export default function Settings() {
                 if (item.type === 'blocked') return <UserListModal key={item.id} item={item} type="blocked" />;
                 if (item.type === 'muted') return <UserListModal key={item.id} item={item} type="muted" />;
                 if (item.type === 'restricted') return <UserListModal key={item.id} item={item} type="restricted" />;
-                if (item.type === 'closeFriends') return <UserListModal key={item.id} item={item} type="closeFriends" />;
+                if (item.type === 'closeFriends') return <CloseFriendsModal key={item.id} item={item} />;
                 if (item.type === 'chatBackground') return <ChatBackgroundSettingModal key={item.id} item={item} />;
                 if (item.type === 'privacyShutter') return <PrivacyShutterModal key={item.id} item={item} />;
                 if (item.type === 'proximitySync') return <ProximitySyncModal key={item.id} item={item} />;
@@ -1719,6 +1719,218 @@ function ReadReceiptsModal({ item, enabled, updateEnabled }: any) {
             {enabled ? 'Disable Read Receipts' : 'Enable Read Receipts'}
           </Button>
         </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ── Instagram-style Close Friends Manager ──────────────────────────────────
+const MAX_CLOSE_FRIENDS = 25;
+
+function CloseFriendsModal({ item }: { item: any }) {
+  const { profile } = useAuth();
+  const [open, setOpen] = useState(false);
+  const [closeFriends, setCloseFriends] = useState<any[]>([]);
+  const [followers, setFollowers] = useState<any[]>([]);
+  const [search, setSearch] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [tab, setTab] = useState<'list' | 'add'>('list');
+
+  const fetchData = async () => {
+    if (!profile) return;
+    setLoading(true);
+    try {
+      const [cfRes, follRes]: any[] = await Promise.all([
+        (supabase as any)
+          .from('close_friends')
+          .select('friend:friend_id(id, username, full_name, profile_photo_url)')
+          .eq('user_id', profile.id),
+        (supabase as any)
+          .from('follows')
+          .select('follower:follower_id(id, username, full_name, profile_photo_url)')
+          .eq('following_id', profile.id),
+      ]);
+      const cfList = (cfRes.data || []).map((r: any) => r.friend).filter(Boolean);
+      const cfIds = new Set(cfList.map((u: any) => u.id));
+      const follList = (follRes.data || [])
+        .map((r: any) => r.follower)
+        .filter((u: any) => u && !cfIds.has(u.id));
+      setCloseFriends(cfList);
+      setFollowers(follList);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAdd = async (user: any) => {
+    if (!profile) return;
+    if (closeFriends.length >= MAX_CLOSE_FRIENDS) {
+      toast.error(`Maximum ${MAX_CLOSE_FRIENDS} close friends allowed`);
+      return;
+    }
+    const { error } = await (supabase as any)
+      .from('close_friends')
+      .insert({ user_id: profile.id, friend_id: user.id });
+    if (error) { toast.error('Failed to add'); return; }
+    setCloseFriends(prev => [...prev, user]);
+    setFollowers(prev => prev.filter(u => u.id !== user.id));
+    toast.success(`${user.username} added to Close Friends`);
+  };
+
+  const handleRemove = async (user: any) => {
+    if (!profile) return;
+    const { error } = await (supabase as any)
+      .from('close_friends')
+      .delete()
+      .eq('user_id', profile.id)
+      .eq('friend_id', user.id);
+    if (error) { toast.error('Failed to remove'); return; }
+    setCloseFriends(prev => prev.filter(u => u.id !== user.id));
+    setFollowers(prev => [...prev, user]);
+    toast.success(`${user.username} removed from Close Friends`);
+  };
+
+  const filteredFollowers = followers.filter(u =>
+    !search || u.username?.toLowerCase().includes(search.toLowerCase()) ||
+    u.full_name?.toLowerCase().includes(search.toLowerCase())
+  );
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (v) fetchData(); }}>
+      <DialogTrigger asChild>
+        <div className="flex items-center justify-between p-4 cursor-pointer hover:bg-accent/50 transition-colors">
+          <div className="flex items-center gap-3">
+            <item.icon className="w-5 h-5 text-green-500" />
+            <span className="text-sm font-medium">{item.label}</span>
+          </div>
+          <ChevronRight className="w-4 h-4 text-muted-foreground" />
+        </div>
+      </DialogTrigger>
+
+      <DialogContent className="max-w-[calc(100%-2rem)] md:max-w-md p-0 overflow-hidden">
+        <DialogHeader className="px-4 pt-4 pb-3 border-b">
+          <DialogTitle className="flex items-center gap-2">
+            <span className="text-green-500 text-base">★</span>
+            Close Friends
+            <span className="ml-auto text-xs font-semibold px-2 py-0.5 rounded-full bg-green-500/15 text-green-500 border border-green-500/30">
+              {closeFriends.length}/{MAX_CLOSE_FRIENDS}
+            </span>
+          </DialogTitle>
+          <p className="text-xs text-muted-foreground mt-1">
+            Only you can see who's on your list. They won't be notified.
+          </p>
+        </DialogHeader>
+
+        {/* Tabs */}
+        <div className="flex gap-1 mx-4 mt-3 bg-muted rounded-lg p-1">
+          <button
+            onClick={() => setTab('list')}
+            className={cn("flex-1 text-xs font-semibold py-1.5 rounded-md transition-all",
+              tab === 'list' ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}
+          >
+            Your List ({closeFriends.length})
+          </button>
+          <button
+            onClick={() => setTab('add')}
+            className={cn("flex-1 text-xs font-semibold py-1.5 rounded-md transition-all",
+              tab === 'add' ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}
+          >
+            Add People
+          </button>
+        </div>
+
+        {tab === 'add' && (
+          <div className="px-4 pt-2 pb-1">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+              <Input
+                placeholder="Search followers..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="pl-9 h-9 text-sm"
+              />
+            </div>
+          </div>
+        )}
+
+        <ScrollArea className="h-80">
+          <div className="px-4 py-2 space-y-1">
+            {loading ? (
+              Array(4).fill(0).map((_, i) => (
+                <div key={i} className="flex items-center gap-3 py-2 animate-pulse">
+                  <div className="w-10 h-10 rounded-full bg-muted shrink-0" />
+                  <div className="flex-1 space-y-1.5">
+                    <div className="w-24 h-3 bg-muted rounded" />
+                    <div className="w-32 h-2 bg-muted rounded" />
+                  </div>
+                  <div className="w-16 h-8 bg-muted rounded" />
+                </div>
+              ))
+            ) : tab === 'list' ? (
+              closeFriends.length === 0 ? (
+                <div className="text-center py-12 text-muted-foreground">
+                  <span className="text-3xl block mb-2">★</span>
+                  <p className="text-sm font-medium">No close friends yet</p>
+                  <p className="text-xs mt-1">Switch to "Add People" to get started</p>
+                </div>
+              ) : (
+                closeFriends.map(user => (
+                  <div key={user.id} className="flex items-center gap-3 py-2">
+                    <div className="relative shrink-0">
+                      <Avatar className="w-10 h-10">
+                        <AvatarImage src={user.profile_photo_url || ''} />
+                        <AvatarFallback>{user.username?.[0]?.toUpperCase()}</AvatarFallback>
+                      </Avatar>
+                      <span className="absolute -bottom-0.5 -right-0.5 bg-green-500 text-white text-[8px] w-4 h-4 rounded-full flex items-center justify-center font-bold">★</span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold truncate">{user.username}</p>
+                      <p className="text-xs text-muted-foreground truncate">{user.full_name}</p>
+                    </div>
+                    <Button variant="secondary" size="sm" className="shrink-0 h-8 text-xs"
+                      onClick={() => handleRemove(user)}>
+                      Remove
+                    </Button>
+                  </div>
+                ))
+              )
+            ) : (
+              filteredFollowers.length === 0 ? (
+                <div className="text-center py-12 text-muted-foreground">
+                  <p className="text-sm">{search ? 'No results found' : 'No followers to add'}</p>
+                </div>
+              ) : (
+                filteredFollowers.map(user => (
+                  <div key={user.id} className="flex items-center gap-3 py-2">
+                    <Avatar className="w-10 h-10 shrink-0">
+                      <AvatarImage src={user.profile_photo_url || ''} />
+                      <AvatarFallback>{user.username?.[0]?.toUpperCase()}</AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold truncate">{user.username}</p>
+                      <p className="text-xs text-muted-foreground truncate">{user.full_name}</p>
+                    </div>
+                    <Button
+                      size="sm"
+                      className="shrink-0 h-8 text-xs bg-green-600 hover:bg-green-700 text-white"
+                      disabled={closeFriends.length >= MAX_CLOSE_FRIENDS}
+                      onClick={() => handleAdd(user)}>
+                      Add
+                    </Button>
+                  </div>
+                ))
+              )
+            )}
+          </div>
+        </ScrollArea>
+
+        {closeFriends.length >= MAX_CLOSE_FRIENDS && (
+          <div className="px-4 py-2 border-t bg-yellow-500/10">
+            <p className="text-xs text-yellow-600 font-medium text-center">
+              List full ({MAX_CLOSE_FRIENDS}/{MAX_CLOSE_FRIENDS}) — remove someone to add more
+            </p>
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   );
