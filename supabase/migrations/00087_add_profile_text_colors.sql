@@ -1,0 +1,1 @@
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS bio_color text DEFAULT '#ffffff', ADD COLUMN IF NOT EXISTS username_color text DEFAULT '#ffffff', ADD COLUMN IF NOT EXISTS stats_color text DEFAULT '#ffffff';

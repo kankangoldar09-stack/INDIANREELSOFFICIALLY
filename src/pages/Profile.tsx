@@ -42,6 +42,7 @@ export default function ProfilePage() {
   const [isQRFlipped, setIsQRFlipped] = useState(false);
   const [showThemePicker, setShowThemePicker] = useState(false);
   const [adminTab, setAdminTab] = useState<'ring' | 'bg'>('bg');
+  const [showColorCustomizer, setShowColorCustomizer] = useState(false);
   const navigate = useNavigate();
 
   const isOwnProfile = currentUser?.username === username || !username || username === 'me';
@@ -73,6 +74,17 @@ export default function ProfilePage() {
     { label: 'Midnight Blue','value': '#00001a' },
     { label: 'Dark Teal',    value: '#001a1a' },
   ];
+
+  const handleSaveTextColor = async (field: 'bio_color' | 'username_color' | 'stats_color', color: string) => {
+    if (!currentUser?.id) return;
+    try {
+      await (supabase as any).from('profiles').update({ [field]: color }).eq('id', currentUser.id);
+      setProfile((prev: any) => ({ ...prev, [field]: color }));
+      toast.success('Colour updated!');
+    } catch {
+      toast.error('Failed to update colour');
+    }
+  };
 
   const handleSaveThemeColor = async (colorValue: string) => {
     if (!currentUser?.id) return;
@@ -274,7 +286,7 @@ export default function ProfilePage() {
 
         <div className="text-center">
           <div className="flex items-center justify-center gap-1">
-             <span className="font-bold text-lg">@{profile?.username}</span>
+             <span className="font-bold text-lg" style={{ color: profile?.username_color || '#ffffff' }}>@{profile?.username}</span>
              {profile?.is_verified && <VerificationBadge size={25} />}
           </div>
         </div>
@@ -286,27 +298,26 @@ export default function ProfilePage() {
             onClick={() => navigate(`/profile/${profile?.username}/following`)}
           >
             <p className="font-black text-xl tracking-tight leading-none"><Counter value={counts.following} /></p>
-            <p className="text-zinc-500 text-xs mt-1">Following</p>
+            <p className="text-xs mt-1" style={{ color: profile?.stats_color || '#71717a' }}>Following</p>
           </div>
           <div 
             className="text-center cursor-pointer active:scale-95 transition-transform"
             onClick={() => navigate(`/profile/${profile?.username}/followers`)}
           >
             <p className="font-black text-xl tracking-tight leading-none"><Counter value={counts.followers} /></p>
-            <p className="text-zinc-500 text-xs mt-1">Followers</p>
+            <p className="text-xs mt-1" style={{ color: profile?.stats_color || '#71717a' }}>Followers</p>
           </div>
           <div className="text-center">
             <p className="font-black text-xl tracking-tight leading-none"><Counter value={counts.likes} /></p>
-            <p className="text-zinc-500 text-xs mt-1">Likes</p>
+            <p className="text-xs mt-1" style={{ color: profile?.stats_color || '#71717a' }}>Likes</p>
           </div>
         </div>
 
         {/* Bio & Links */}
         <div className="w-full max-w-xs text-center space-y-2">
           {profile?.bio && (
-            <p className="text-sm font-medium whitespace-pre-wrap leading-tight">{profile.bio}</p>
+            <p className="text-sm font-medium whitespace-pre-wrap leading-tight" style={{ color: profile?.bio_color || '#ffffff' }}>{profile.bio}</p>
           )}
-
         </div>
 
         {/* Action Buttons */}
@@ -451,6 +462,58 @@ export default function ProfilePage() {
                >
                  <Bookmark className="w-5 h-5" />
                </Button>
+
+               {/* Own profile text colour customizer */}
+               <Button
+                 size="icon"
+                 className="bg-zinc-900 hover:bg-zinc-800 h-11 w-11 rounded-md transition-all active:scale-95"
+                 onClick={() => setShowColorCustomizer(true)}
+                 title="Customize profile colours"
+               >
+                 <Paintbrush className="w-5 h-5 text-violet-400" />
+               </Button>
+
+               <Dialog open={showColorCustomizer} onOpenChange={setShowColorCustomizer}>
+                 <DialogContent className="max-w-[calc(100%-2rem)] md:max-w-sm bg-zinc-950 border border-zinc-800 text-white">
+                   <DialogHeader>
+                     <DialogTitle className="flex items-center gap-2">
+                       <Paintbrush className="w-4 h-4 text-violet-400" />
+                       Profile Colours
+                     </DialogTitle>
+                   </DialogHeader>
+                   <p className="text-xs text-zinc-400 -mt-1">Personalise text colours on your profile.</p>
+
+                   {[
+                     { label: 'Username colour', field: 'username_color' as const, current: profile?.username_color || '#ffffff' },
+                     { label: 'Bio text colour',  field: 'bio_color'      as const, current: profile?.bio_color      || '#ffffff' },
+                     { label: 'Stats label colour', field: 'stats_color'  as const, current: profile?.stats_color    || '#71717a' },
+                   ].map(({ label, field, current }) => (
+                     <div key={field} className="space-y-2">
+                       <p className="text-xs font-semibold text-zinc-300">{label}</p>
+                       <div className="flex flex-wrap gap-2">
+                         {['#ffffff','#facc15','#fb923c','#f87171','#4ade80','#38bdf8','#a78bfa','#f472b6','#00eaff','#ff007f'].map(clr => (
+                           <button
+                             key={clr}
+                             onClick={() => handleSaveTextColor(field, clr)}
+                             className={cn(
+                               "w-8 h-8 rounded-full border-2 transition-transform active:scale-90",
+                               current === clr ? "border-white scale-110" : "border-transparent hover:border-zinc-400"
+                             )}
+                             style={{ background: clr }}
+                             title={clr}
+                           />
+                         ))}
+                         {/* native colour input for custom pick */}
+                         <label className="w-8 h-8 rounded-full border-2 border-dashed border-zinc-600 flex items-center justify-center cursor-pointer hover:border-zinc-400 transition-colors" title="Custom colour">
+                           <Paintbrush className="w-3.5 h-3.5 text-zinc-400" />
+                           <input type="color" className="sr-only" value={current}
+                             onChange={(e) => handleSaveTextColor(field, e.target.value)} />
+                         </label>
+                       </div>
+                     </div>
+                   ))}
+                 </DialogContent>
+               </Dialog>
 
                {/* Admin-only: Theme Colour Picker */}
                {isAdmin && (
