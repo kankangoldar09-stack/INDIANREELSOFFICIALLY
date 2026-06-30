@@ -191,7 +191,7 @@ export default function VoucherReward() {
   };
 
   return (
-    <div className="min-h-screen bg-background relative overflow-hidden">
+    <div className="flex flex-col h-full bg-background relative overflow-hidden">
       {/* Snow Animation Container */}
       <div 
         ref={snowContainerRef}
@@ -360,7 +360,7 @@ export default function VoucherReward() {
         }
       `}</style>
       {/* Header */}
-      <div className="sticky top-0 z-20 bg-background border-b border-border">
+      <div className="sticky top-0 z-20 bg-background border-b border-border shrink-0">
         <div className="flex items-center gap-4 p-4">
           <Button
             variant="ghost"
@@ -378,7 +378,7 @@ export default function VoucherReward() {
       </div>
 
       {/* Content */}
-      <div className="p-4 space-y-6 relative z-20">
+      <div className="flex-1 overflow-y-auto p-4 space-y-6 relative z-20 pb-24">
         {/* Show only claimed voucher if user has claimed, otherwise show available voucher */}
         {claimedVouchers.length > 0 ? (
           /* Claimed Vouchers */

@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -12,7 +13,7 @@ import { Slider } from '@/components/ui/slider';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
-import { LayoutDashboard, Users, ShieldAlert, BadgeCheck, FileText, BarChart3, Settings, Trash2, Ban, CheckCircle, XCircle, Film, Video as VideoIcon, Palette, PlayCircle, Send, Image as ImageIcon, Search, Plus } from 'lucide-react';
+import { LayoutDashboard, Users, ShieldAlert, BadgeCheck, FileText, BarChart3, Settings, Trash2, Ban, CheckCircle, XCircle, Film, Video as VideoIcon, Palette, PlayCircle, Send, Image as ImageIcon, Search, Plus, Flag } from 'lucide-react';
 import IndianSpinner from '@/components/ui/IndianSpinner';
 import { VerificationBadge } from '@/components/VerificationBadge';
 import { Navigate } from 'react-router-dom';
@@ -273,6 +274,130 @@ export default function AdminDashboard() {
       fetchAdminData();
     } catch (error) {
       toast.error('Failed to remove reel');
+    }
+  };
+
+  // Ban a user and record device IP if selected
+  const handleBanUser = async (userId: string, isDeviceBan: boolean, reason: string) => {
+    try {
+      setLoading(true);
+      const { data: targetProfile } = await (supabase as any)
+        .from('profiles')
+        .select('ban_reason')
+        .eq('id', userId)
+        .single();
+
+      let targetIp = 'unknown';
+      if (targetProfile?.ban_reason && targetProfile.ban_reason.startsWith('IP:')) {
+        targetIp = targetProfile.ban_reason.replace('IP:', '').trim();
+      }
+
+      const finalBanReason = isDeviceBan 
+        ? `DEVICE_IP_BAN|${targetIp}|${reason}`
+        : reason;
+
+      const { error } = await (supabase as any)
+        .from('profiles')
+        .update({
+          is_banned: true,
+          ban_reason: finalBanReason
+        })
+        .eq('id', userId);
+
+      if (error) throw error;
+
+      toast.success(`User successfully ${isDeviceBan ? 'Device Banned' : 'Banned'}`);
+      fetchAdminData();
+    } catch (err: any) {
+      toast.error(`Failed to ban user: ${err.message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleUnbanUser = async (userId: string) => {
+    try {
+      setLoading(true);
+      const { error } = await (supabase as any)
+        .from('profiles')
+        .update({
+          is_banned: false,
+          ban_reason: null
+        })
+        .eq('id', userId);
+
+      if (error) throw error;
+      toast.success('User unbanned successfully');
+      fetchAdminData();
+    } catch (err: any) {
+      toast.error(`Failed to unban user: ${err.message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Send a direct message to a user
+  const sendDirectMessage = async (receiverId: string, content: string) => {
+    try {
+      const { error } = await (supabase as any).from('messages').insert({
+        sender_id: profile?.id,
+        receiver_id: receiverId,
+        content: content,
+        media_type: null
+      });
+      if (error) throw error;
+      toast.success('Direct reply message sent!');
+    } catch (err: any) {
+      toast.error(`Failed to send message: ${err.message}`);
+    }
+  };
+
+  // Delete a reported video
+  const handleDeleteReportedVideo = async (reelId: string, feedbackId: string) => {
+    if (!window.confirm('Are you sure you want to delete this reported video?')) return;
+    try {
+      const { error } = await (supabase as any).from('reels').delete().eq('id', reelId);
+      if (error) throw error;
+      
+      // Update report status
+      await (supabase as any).from('feedback').update({ 
+        status: 'resolved', 
+        admin_reply: 'Reported video deleted by Admin.' 
+      }).eq('id', feedbackId);
+
+      toast.success('Reported video deleted successfully!');
+      fetchAdminData();
+    } catch (err: any) {
+      toast.error(`Failed to delete video: ${err.message}`);
+    }
+  };
+
+  // Device ban a blackmailer by their username
+  const handleBanBlackmailer = async (username: string, reason: string, feedbackId: string) => {
+    try {
+      const { data: bProfile } = await (supabase as any)
+        .from('profiles')
+        .select('*')
+        .eq('username', username)
+        .maybeSingle();
+
+      if (!bProfile) {
+        toast.error(`User @${username} not found.`);
+        return;
+      }
+
+      await handleBanUser(bProfile.id, true, reason);
+      
+      // Mark report as resolved
+      await (supabase as any).from('feedback').update({ 
+        status: 'resolved', 
+        admin_reply: `Action Taken: Blackmailer @${username} has been Device Banned.` 
+      }).eq('id', feedbackId);
+
+      toast.success(`Blackmailer @${username} has been device banned!`);
+      fetchAdminData();
+    } catch (err: any) {
+      toast.error(`Failed to ban blackmailer: ${err.message}`);
     }
   };
 
@@ -618,6 +743,22 @@ export default function AdminDashboard() {
                         >
                           <BadgeCheck className="w-4 h-4" />
                         </Button>
+                        {user.is_banned ? (
+                          <Button 
+                            onClick={() => handleUnbanUser(user.id)} 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-8 w-8 text-green-500"
+                            title="Unban User"
+                          >
+                            <CheckCircle className="w-4 h-4" />
+                          </Button>
+                        ) : (
+                          <BanUserDialog 
+                            user={user} 
+                            onBan={(isDevice, reason) => handleBanUser(user.id, isDevice, reason)} 
+                          />
+                        )}
                         <CopyrightStrikeDialog 
                           user={user} 
                           onIssue={(reason) => handleIssueCopyrightStrike(user.id, reason)} 
@@ -1225,6 +1366,106 @@ export default function AdminDashboard() {
           </TabsContent>
         )}
 
+        <TabsContent value="feedback">
+          <Card className="border-muted shadow-sm">
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle className="text-xl font-bold flex items-center gap-2">
+                  <Flag className="w-5 h-5 text-rose-500" />
+                  Grievances & Platform Reports
+                </CardTitle>
+                <CardDescription>Moderate privacy violations, blackmailing reports, and content issues.</CardDescription>
+              </div>
+            </CardHeader>
+            <CardContent className="p-0">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Reporter</TableHead>
+                    <TableHead>Subject</TableHead>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {feedback.map((item) => {
+                    let isGrievance = false;
+                    let reportData: any = null;
+                    try {
+                      if (item.message && (item.message.startsWith('{') || item.message.startsWith('['))) {
+                        reportData = JSON.parse(item.message);
+                        isGrievance = true;
+                      }
+                    } catch (e) {
+                      isGrievance = false;
+                    }
+
+                    const isBlackmail = isGrievance && reportData?.type === 'blackmail';
+                    const isVideoReport = isGrievance && reportData?.type === 'video_report';
+
+                    return (
+                      <TableRow key={item.id}>
+                        <TableCell>
+                          <span className={cn(
+                            "px-2 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider",
+                            isBlackmail 
+                              ? "bg-rose-500/10 text-rose-500" 
+                              : isVideoReport 
+                                ? "bg-amber-500/10 text-amber-500" 
+                                : "bg-blue-500/10 text-blue-500"
+                          )}>
+                            {isBlackmail ? '💔 Blackmail' : isVideoReport ? '🎬 Video Report' : '💬 Feedback'}
+                          </span>
+                        </TableCell>
+                        <TableCell className="flex items-center gap-2">
+                          <Avatar className="w-6 h-6">
+                            <AvatarImage src={item.profiles?.profile_photo_url || ''} />
+                            <AvatarFallback>{item.profiles?.username?.[0] || 'U'}</AvatarFallback>
+                          </Avatar>
+                          <span className="font-semibold text-sm">@{item.profiles?.username || 'Unknown'}</span>
+                        </TableCell>
+                        <TableCell className="font-medium max-w-[200px] truncate">{item.subject}</TableCell>
+                        <TableCell className="text-xs text-muted-foreground">
+                          {new Date(item.created_at).toLocaleDateString()}
+                        </TableCell>
+                        <TableCell>
+                          <span className={cn(
+                            "px-2 py-0.5 rounded-full text-[10px] font-bold uppercase",
+                            item.status === 'resolved' ? "bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-400" : "bg-amber-100 text-amber-700 dark:bg-amber-900/20 dark:text-amber-400"
+                          )}>
+                            {item.status}
+                          </span>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <GrievanceReviewDialog 
+                            report={item} 
+                            reportData={reportData}
+                            isBlackmail={isBlackmail}
+                            isVideoReport={isVideoReport}
+                            onBanBlackmailer={(username, reason) => handleBanBlackmailer(username, reason, item.id)}
+                            onDeleteVideo={(reelId) => handleDeleteReportedVideo(reelId, item.id)}
+                            onSendReply={(receiverId, text) => sendDirectMessage(receiverId, text)}
+                            onResolve={(reply) => handleReplyFeedback(item.id, reply)}
+                          />
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                  {feedback.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={6} className="py-10 text-center text-muted-foreground">
+                        No feedback or grievances submitted yet.
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
       </Tabs>
     </div>
   );
@@ -1355,6 +1596,330 @@ function FeedbackReplyDialog({ feedback, onReply }: { feedback: any, onReply: (r
           <Button onClick={() => { onReply(reply); setReply(''); }} disabled={!reply.trim()}>Send Reply</Button>
         </DialogFooter>
       </DialogContent>
+    </Dialog>
+  );
+}
+
+function BanUserDialog({ user, onBan }: { user: Profile, onBan: (isDeviceBan: boolean, reason: string) => void }) {
+  const [reason, setReason] = useState('');
+  const [isDeviceBan, setIsDeviceBan] = useState(false);
+  const [open, setOpen] = useState(false);
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" title="Ban User">
+          <Ban className="w-4 h-4" />
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Ban @{user.username}</DialogTitle>
+          <CardDescription>Select the ban type and enter a reason for this restriction.</CardDescription>
+        </DialogHeader>
+        <div className="space-y-4 py-4">
+          <div className="flex items-center justify-between p-3 bg-muted/50 rounded-xl">
+            <div>
+              <p className="text-sm font-bold text-foreground">Permanent Device & IP Ban</p>
+              <p className="text-xs text-muted-foreground">Locks out their physical device and current IP address</p>
+            </div>
+            <input 
+              type="checkbox" 
+              checked={isDeviceBan} 
+              onChange={(e) => setIsDeviceBan(e.target.checked)}
+              className="w-4 h-4 accent-rose-600 rounded cursor-pointer"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Ban Reason</label>
+            <Input 
+              placeholder="e.g., Severe blackmail violation, hate speech..." 
+              value={reason} 
+              onChange={(e) => setReason(e.target.value)} 
+              className="rounded-xl"
+              required
+            />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button 
+            variant="ghost" 
+            onClick={() => { setOpen(false); setReason(''); }}
+          >
+            Cancel
+          </Button>
+          <Button 
+            onClick={() => {
+              onBan(isDeviceBan, reason);
+              setOpen(false);
+              setReason('');
+            }} 
+            disabled={!reason.trim()}
+            className="bg-red-600 hover:bg-red-700 text-white font-bold"
+          >
+            Apply Ban
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function GrievanceReviewDialog({ 
+  report, 
+  reportData, 
+  isBlackmail, 
+  isVideoReport, 
+  onBanBlackmailer, 
+  onDeleteVideo, 
+  onSendReply, 
+  onResolve 
+}: { 
+  report: any, 
+  reportData: any, 
+  isBlackmail: boolean, 
+  isVideoReport: boolean, 
+  onBanBlackmailer: (username: string, reason: string) => void, 
+  onDeleteVideo: (reelId: string) => void, 
+  onSendReply: (receiverId: string, text: string) => void, 
+  onResolve: (reply: string) => void 
+}) {
+  const [open, setOpen] = useState(false);
+  const [replyText, setReplyText] = useState('');
+  const [officialResolution, setOfficialResolution] = useState('');
+  const [zoomUrl, setZoomUrl] = useState<string | null>(null);
+
+  const screenshots = report.screenshot_url ? report.screenshot_url.split(',') : [];
+  const description = isBlackmail || isVideoReport ? reportData?.description : report.message;
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button variant="outline" size="sm">Review Case</Button>
+      </DialogTrigger>
+      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2 text-xl font-black uppercase text-rose-500">
+            <ShieldAlert className="w-5 h-5" />
+            Grievance Case Review
+          </DialogTitle>
+          <CardDescription>
+            Submitted on {new Date(report.created_at).toLocaleString()} | Status: {report.status}
+          </CardDescription>
+        </DialogHeader>
+
+        <div className="space-y-6 py-4">
+          {/* Section 1: Subject and Type */}
+          <div className="p-3 bg-muted/40 border rounded-xl flex justify-between items-center">
+            <div>
+              <p className="text-[10px] text-zinc-500 uppercase tracking-widest font-black">Subject</p>
+              <p className="text-base font-extrabold text-foreground">{report.subject}</p>
+            </div>
+            <span className={cn(
+              "px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider",
+              isBlackmail ? "bg-rose-500/10 text-rose-500" : isVideoReport ? "bg-amber-500/10 text-amber-500" : "bg-blue-500/10 text-blue-500"
+            )}>
+              {isBlackmail ? '💔 Blackmail' : isVideoReport ? '🎬 Video Report' : '💬 Feedback'}
+            </span>
+          </div>
+
+          {/* Section 2: Reporter Details */}
+          <div>
+            <p className="text-[10px] text-zinc-500 uppercase tracking-widest font-black mb-2">Reporter Details</p>
+            <div className="flex items-center justify-between p-3 bg-card border rounded-xl">
+              <div className="flex items-center gap-3">
+                <Avatar className="w-10 h-10">
+                  <AvatarImage src={report.profiles?.profile_photo_url || ''} />
+                  <AvatarFallback>{report.profiles?.username?.[0]}</AvatarFallback>
+                </Avatar>
+                <div>
+                  <p className="font-bold text-foreground">@{report.profiles?.username || 'user'}</p>
+                  <p className="text-xs text-muted-foreground">{report.profiles?.full_name}</p>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <a 
+                  href={`/profile/${report.profiles?.username}`} 
+                  target="_blank" 
+                  rel="noreferrer"
+                  className="px-3 py-1.5 bg-accent hover:bg-accent/80 text-foreground text-xs rounded-xl font-bold transition-all border"
+                >
+                  View Channel
+                </a>
+              </div>
+            </div>
+            {isBlackmail && reportData?.reporter_ip && (
+              <p className="text-[10px] text-zinc-500 mt-1.5 font-mono px-1">Reporter IP: {reportData.reporter_ip}</p>
+            )}
+          </div>
+
+          {/* Section 3: Grievance Target & Actions */}
+          {isBlackmail && (
+            <div className="p-4 border border-rose-500/20 bg-rose-500/5 rounded-xl space-y-4">
+              <div>
+                <p className="text-[10px] text-rose-500 uppercase tracking-widest font-black">Accused / Blackmailer Username</p>
+                <p className="text-lg font-black text-foreground mt-1">@{reportData?.blackmailer_username || 'Not specified'}</p>
+              </div>
+              {reportData?.blackmailer_username && (
+                <div className="flex gap-2.5 pt-1">
+                  <a 
+                    href={`/profile/${reportData.blackmailer_username}`} 
+                    target="_blank" 
+                    rel="noreferrer"
+                    className="flex-1 text-center py-2 bg-zinc-900 border hover:bg-zinc-800 text-white text-xs rounded-xl font-bold transition-all"
+                  >
+                    View Blackmailer Channel
+                  </a>
+                  <Button 
+                    onClick={() => {
+                      const reason = window.prompt("Enter Device/IP ban reason for the blackmailer:", "Device Banned for Blackmail Violation");
+                      if (reason) {
+                        onBanBlackmailer(reportData.blackmailer_username, reason);
+                      }
+                    }}
+                    className="flex-1 py-2 bg-red-600 hover:bg-red-700 text-white text-xs rounded-xl font-bold transition-all"
+                  >
+                    Ban & Block Device
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {isVideoReport && reportData?.reported_video_id && (
+            <div className="p-4 border border-amber-500/20 bg-amber-500/5 rounded-xl space-y-4">
+              <div>
+                <p className="text-[10px] text-amber-500 uppercase tracking-widest font-black">Reported Video ID</p>
+                <p className="text-sm font-mono text-zinc-400 mt-1 break-all">{reportData.reported_video_id}</p>
+              </div>
+              <div className="flex gap-2">
+                <a 
+                  href={`/reels?id=${reportData.reported_video_id}`} 
+                  target="_blank" 
+                  rel="noreferrer"
+                  className="flex-1 text-center py-2 bg-zinc-900 border hover:bg-zinc-800 text-white text-xs rounded-xl font-bold transition-all"
+                >
+                  Play Reported Video
+                </a>
+                <Button 
+                  onClick={() => onDeleteVideo(reportData.reported_video_id)}
+                  className="flex-1 py-2 bg-red-600 hover:bg-red-700 text-white text-xs rounded-xl font-bold transition-all"
+                >
+                  Delete Reported Video
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Section 4: Report Description */}
+          <div className="space-y-1.5">
+            <p className="text-[10px] text-zinc-500 uppercase tracking-widest font-black">Grievance Description</p>
+            <div className="p-4 bg-muted/30 border rounded-xl text-sm leading-relaxed whitespace-pre-wrap">
+              {description || 'No description provided.'}
+            </div>
+          </div>
+
+          {/* Section 5: Screenshot proof */}
+          {screenshots.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-[10px] text-zinc-500 uppercase tracking-widest font-black">Screenshot proof ({screenshots.length})</p>
+              <div className="grid grid-cols-5 gap-2">
+                {screenshots.map((url: string, idx: number) => (
+                  <div 
+                    key={idx} 
+                    onClick={() => setZoomUrl(url)}
+                    className="aspect-square bg-muted border rounded-lg overflow-hidden cursor-pointer hover:opacity-85 transition-opacity animate-in fade-in"
+                  >
+                    <img src={url} alt="Proof" className="w-full h-full object-cover" />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Section 6: Direct Message Replies */}
+          <div className="space-y-3 p-4 bg-muted/20 border rounded-xl">
+            <div>
+              <p className="text-[10px] text-zinc-500 uppercase tracking-widest font-black">Quick Reply via Chat</p>
+              <p className="text-[11px] text-muted-foreground mt-0.5">Type message below and click who to send direct chat inbox message.</p>
+            </div>
+            <Textarea
+              placeholder="Type message text here..."
+              value={replyText}
+              onChange={(e) => setReplyText(e.target.value)}
+              className="min-h-[80px] bg-card border rounded-xl text-sm"
+            />
+            <div className="flex gap-2.5">
+              <Button
+                onClick={() => {
+                  onSendReply(report.user_id, replyText);
+                  setReplyText('');
+                }}
+                disabled={!replyText.trim()}
+                className="flex-1 bg-zinc-900 border hover:bg-zinc-800 text-white text-xs font-bold h-9 rounded-xl animate-in slide-in-from-bottom-1"
+              >
+                Send to Reporter
+              </Button>
+              {isBlackmail && reportData?.blackmailer_username && (
+                <Button
+                  onClick={async () => {
+                    const { data: bProfile } = await (supabase as any)
+                      .from('profiles')
+                      .select('id')
+                      .eq('username', reportData.blackmailer_username)
+                      .maybeSingle();
+                    if (bProfile) {
+                      onSendReply(bProfile.id, replyText);
+                      setReplyText('');
+                    } else {
+                      toast.error('Accused profile not found');
+                    }
+                  }}
+                  disabled={!replyText.trim()}
+                  className="flex-1 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold h-9 rounded-xl animate-in slide-in-from-bottom-1"
+                >
+                  Send to Blackmailer
+                </Button>
+              )}
+            </div>
+          </div>
+
+          {/* Section 7: Resolution */}
+          <div className="space-y-3 pt-2 border-t">
+            <div>
+              <p className="text-[10px] text-zinc-500 uppercase tracking-widest font-black">Official Resolution Details</p>
+              <p className="text-[11px] text-muted-foreground mt-0.5">Saves official action status and completes the report.</p>
+            </div>
+            <Input
+              placeholder="e.g. Case resolved, blackmailer banned and video deleted."
+              value={officialResolution}
+              onChange={(e) => setOfficialResolution(e.target.value)}
+              className="rounded-xl text-sm"
+            />
+            <Button
+              onClick={() => {
+                onResolve(officialResolution);
+                setOpen(false);
+                setOfficialResolution('');
+              }}
+              disabled={!officialResolution.trim()}
+              className="w-full bg-green-600 hover:bg-green-700 text-white font-extrabold uppercase tracking-wider h-11 rounded-xl shadow-lg shadow-green-600/10"
+            >
+              Mark Grievance Case Resolved
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+      
+      {/* Lightbox Zoom Modal */}
+      {zoomUrl && (
+        <Dialog open={!!zoomUrl} onOpenChange={() => setZoomUrl(null)}>
+          <DialogContent className="max-w-3xl p-0 overflow-hidden bg-black/95 border-none flex items-center justify-center h-[80vh]">
+            <img src={zoomUrl} alt="Screenshot Proof Zoomed" className="w-full h-full object-contain animate-in zoom-in-95 duration-200" />
+          </DialogContent>
+        </Dialog>
+      )}
     </Dialog>
   );
 }

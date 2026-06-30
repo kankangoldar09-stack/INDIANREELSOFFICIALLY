@@ -1,35 +1,34 @@
-import CalculatorVault from '@/components/settings/CalculatorVault';
-import { useState, useEffect } from 'react';
-import QRCodeDataUrl from '@/components/ui/qrcodedataurl';
-import { usePrivacyShutter } from '@/contexts/PrivacyShutterContext';
-import { useProximity } from '@/contexts/ProximityContext';
-
+import { AlignLeft, ArrowLeft, BadgeCheck, Bell, Bookmark, Bot, 
+  CheckCircle, 
+  ChevronRight, Cloud, Code2, Copy, Cpu, Database, DollarSign, Download, Eye, EyeOff, Fingerprint,Flag, Gift, Globe, Heart, HelpCircle, History,Image as ImageIcon, Info, Key, Languages, LayoutDashboard,Lock, LogOut, MapPin,MessageSquare, Monitor, Moon, Music2, Palette, PlayCircle,QrCode, Scale, Search, Send, 
+  Share2, Shield, ShieldCheck, Smartphone, 
+  SmartphoneIcon, 
+  Sparkles, Sun, 
+  Trash2, Type, 
+  User, UserMinus, Video, Volume2, XCircle, Zap 
+} from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '@/db/supabase';
-import { useAuth } from '@/contexts/AuthContext';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
+import { toast } from 'sonner';
+import CalculatorVault from '@/components/settings/CalculatorVault';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Button } from '@/components/ui/button';
 import { CardDescription } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { toast } from 'sonner';
-import { 
-  User, Shield, Lock, Bell, Eye, EyeOff, Globe, Database, HelpCircle, 
-  Trash2, LogOut, Moon, Sun, Monitor, Languages, Smartphone, History,
-  ChevronRight, BadgeCheck, Type, AlignLeft, LayoutDashboard,
-  Share2, MessageSquare, Heart, Bookmark, UserMinus, Volume2, PlayCircle,
-  SmartphoneIcon, Cloud, Search, Info, Flag, Scale, ShieldCheck, Video, Fingerprint,
-  CheckCircle, XCircle, Palette, QrCode, Image as ImageIcon, MapPin,
-  Sparkles, Bot, Zap, Cpu, Send, Download, Key, Music2, Gift, Code2, Copy, DollarSign, ArrowLeft
-} from 'lucide-react';
-import { VerificationBadge } from '@/components/VerificationBadge';
-import { cn } from '@/lib/utils';
-import { Switch } from '@/components/ui/switch';
-import { useSettings } from '@/contexts/SettingsContext';
 import IndianSpinner from '@/components/ui/IndianSpinner';
+import { Input } from '@/components/ui/input';
+import QRCodeDataUrl from '@/components/ui/qrcodedataurl';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
+import { Switch } from '@/components/ui/switch';
+import { Textarea } from '@/components/ui/textarea';
+import { VerificationBadge } from '@/components/VerificationBadge';
+import { useAuth } from '@/contexts/AuthContext';
+import { usePrivacyShutter } from '@/contexts/PrivacyShutterContext';
+import { useProximity } from '@/contexts/ProximityContext';
+import { useSettings } from '@/contexts/SettingsContext';
+import { supabase } from '@/db/supabase';
+import { cn } from '@/lib/utils';
 
 interface SettingItem {
   id: number;
@@ -38,7 +37,7 @@ interface SettingItem {
   path?: string;
   action?: () => void;
   danger?: boolean;
-  type?: 'language' | 'report' | 'fontSize' | 'videoQuality' | 'dataSaver' | 'autoplay' | 'uid' | 'verificationManager' | 'profileThemeManager' | 'hideViews' | 'theme' | 'themeColor' | 'vault' | 'changePassword' | 'qrCustomization' | 'privacy' | 'blocked' | 'muted' | 'restricted' | 'closeFriends' | 'readReceipts' | 'chatBackground' | 'privacyShutter' | 'proximitySync' | 'aiAutoPilot' | 'telegramConfig' | 'screenshotProtection' | 'autoDownloadMedia' | 'notificationSounds' | 'showOnlineStatus' | 'negativeButtonsHTML' | 'likesNotifications' | 'commentsNotifications' | 'followNotifications' | 'messagesNotifications' | 'reelsNotifications' | 'pushNotifications' | 'emailNotifications' | 'activityStatus';
+  type?: 'language' | 'report' | 'fontSize' | 'videoQuality' | 'dataSaver' | 'autoplay' | 'uid' | 'verificationManager' | 'profileThemeManager' | 'hideViews' | 'theme' | 'themeColor' | 'vault' | 'changePassword' | 'qrCustomization' | 'privacy' | 'blocked' | 'muted' | 'restricted' | 'closeFriends' | 'readReceipts' | 'chatBackground' | 'privacyShutter' | 'proximitySync' | 'aiAutoPilot' | 'telegramConfig' | 'screenshotProtection' | 'autoDownloadMedia' | 'notificationSounds' | 'showOnlineStatus' | 'negativeButtonsHTML' | 'likesNotifications' | 'commentsNotifications' | 'followNotifications' | 'messagesNotifications' | 'reelsNotifications' | 'pushNotifications' | 'emailNotifications' | 'activityStatus' | 'voiceTranslation';
   value?: string;
 }
 
@@ -55,6 +54,61 @@ const languages = [
   "Czech", "Danish", "Finnish", "Hungarian", "Norwegian", "Romanian", "Ukrainian", "Hebrew", "Malay",
   "Persian", "Pashto", "Amharic", "Burmese", "Khmer", "Lao", "Sinhala", "Kazakh", "Uzbek", "Azerbaijani"
 ];
+
+const VOICE_LANG_MAP: Record<string, { bcp47: string; iso: string }> = {
+  "English": { bcp47: "en-US", iso: "en" },
+  "Hindi": { bcp47: "hi-IN", iso: "hi" },
+  "Bengali": { bcp47: "bn-IN", iso: "bn" },
+  "Telugu": { bcp47: "te-IN", iso: "te" },
+  "Marathi": { bcp47: "mr-IN", iso: "mr" },
+  "Tamil": { bcp47: "ta-IN", iso: "ta" },
+  "Gujarati": { bcp47: "gu-IN", iso: "gu" },
+  "Urdu": { bcp47: "ur-PK", iso: "ur" },
+  "Kannada": { bcp47: "kn-IN", iso: "kn" },
+  "Odia": { bcp47: "or-IN", iso: "or" },
+  "Punjabi": { bcp47: "pa-IN", iso: "pa" },
+  "Malayalam": { bcp47: "ml-IN", iso: "ml" },
+  "Assamese": { bcp47: "as-IN", iso: "as" },
+  "Kashmiri": { bcp47: "ks-IN", iso: "ks" },
+  "Nepali": { bcp47: "ne-NP", iso: "ne" },
+  "Spanish": { bcp47: "es-ES", iso: "es" },
+  "French": { bcp47: "fr-FR", iso: "fr" },
+  "German": { bcp47: "de-DE", iso: "de" },
+  "Chinese": { bcp47: "zh-CN", iso: "zh" },
+  "Japanese": { bcp47: "ja-JP", iso: "ja" },
+  "Korean": { bcp47: "ko-KR", iso: "ko" },
+  "Russian": { bcp47: "ru-RU", iso: "ru" },
+  "Portuguese": { bcp47: "pt-PT", iso: "pt" },
+  "Italian": { bcp47: "it-IT", iso: "it" },
+  "Arabic": { bcp47: "ar-SA", iso: "ar" },
+  "Turkish": { bcp47: "tr-TR", iso: "tr" },
+  "Vietnamese": { bcp47: "vi-VN", iso: "vi" },
+  "Thai": { bcp47: "th-TH", iso: "th" },
+  "Indonesian": { bcp47: "id-ID", iso: "id" },
+  "Dutch": { bcp47: "nl-NL", iso: "nl" },
+  "Polish": { bcp47: "pl-PL", iso: "pl" },
+  "Swedish": { bcp47: "sv-SE", iso: "sv" },
+  "Greek": { bcp47: "el-GR", iso: "el" },
+  "Czech": { bcp47: "cs-CZ", iso: "cs" },
+  "Danish": { bcp47: "da-DK", iso: "da" },
+  "Finnish": { bcp47: "fi-FI", iso: "fi" },
+  "Hungarian": { bcp47: "hu-HU", iso: "hu" },
+  "Norwegian": { bcp47: "no-NO", iso: "no" },
+  "Romanian": { bcp47: "ro-RO", iso: "ro" },
+  "Ukrainian": { bcp47: "uk-UA", iso: "uk" },
+  "Hebrew": { bcp47: "he-IL", iso: "he" },
+  "Malay": { bcp47: "ms-MY", iso: "ms" },
+  "Persian": { bcp47: "fa-IR", iso: "fa" },
+  "Pashto": { bcp47: "ps-AF", iso: "ps" },
+  "Amharic": { bcp47: "am-ET", iso: "am" },
+  "Burmese": { bcp47: "my-MM", iso: "my" },
+  "Khmer": { bcp47: "km-KH", iso: "km" },
+  "Lao": { bcp47: "lo-LA", iso: "lo" },
+  "Sinhala": { bcp47: "si-LK", iso: "si" },
+  "Kazakh": { bcp47: "kk-KZ", iso: "kk" },
+  "Uzbek": { bcp47: "uz-UZ", iso: "uz" },
+  "Azerbaijani": { bcp47: "az-AZ", iso: "az" }
+};
 
 const fontSizeOptions = [
   { label: 'Small', value: '14px' },
@@ -94,6 +148,10 @@ export default function Settings() {
   } = useSettings();
   
   const [searchQuery, setSearchQuery] = useState('');
+  
+  const [voiceTranscribeEnabled, setVoiceTranscribeEnabled] = useState(() => localStorage.getItem('voice_transcribe_enabled') === 'true');
+  const [voiceTranscribeInputLang, setVoiceTranscribeInputLang] = useState(() => localStorage.getItem('voice_transcribe_input_lang') || 'English');
+  const [voiceTranscribeTargetLang, setVoiceTranscribeTargetLang] = useState(() => localStorage.getItem('voice_transcribe_target_lang') || 'Japanese');
   
   const handleClearCache = () => {
     if (window.confirm("Are you sure you want to clear cache? This will log you out.")) {
@@ -195,6 +253,7 @@ export default function Settings() {
         { id: 101, icon: QrCode, label: "QR Code Customization", type: 'qrCustomization' },
         { id: 102, icon: ImageIcon, label: "Chat Background", type: 'chatBackground' },
         { id: 2, icon: Languages, label: "Language Selection", type: 'language' },
+        { id: 103, icon: Volume2, label: "Transcript in Voice (Translation)", type: 'voiceTranslation', value: voiceTranscribeEnabled ? `${voiceTranscribeInputLang} ➜ ${voiceTranscribeTargetLang}` : 'Disabled' },
         { id: 34, icon: Type, label: "Font Size", type: 'fontSize', value: fontSizeOptions.find(o => o.value === fontSize)?.label || 'Default' },
         { id: 35, icon: AlignLeft, label: "High Contrast Mode" },
         { id: 36, icon: PlayCircle, label: "Reduce Motion" },
@@ -220,8 +279,8 @@ export default function Settings() {
       title: "Support & Legal",
       items: [
         { id: 44, icon: Info, label: "Ad Preferences" },
-        { id: 45, icon: HelpCircle, label: "Help Center" },
-        { id: 46, icon: Flag, label: "Report a Problem", type: 'report' },
+        { id: 45, icon: HelpCircle, label: "Help Center", path: "/settings/help" },
+        { id: 46, icon: Flag, label: "Report a Problem", path: "/settings/report" },
         ...(isAdmin ? [
           { id: 1002, icon: MessageSquare, label: "Feedback & Bugs (Admin)", path: "/settings/feedback" }
         ] : []),
@@ -285,6 +344,18 @@ export default function Settings() {
               {group.items.map((item) => {
                 if (item.type === 'qrCustomization') return <QRCustomizationModal key={item.id} item={item} />;
                 if (item.type === 'language') return <LanguageModal key={item.id} item={item} />;
+                if (item.type === 'voiceTranslation') return (
+                  <VoiceTranslationModal 
+                    key={item.id} 
+                    item={item} 
+                    enabled={voiceTranscribeEnabled}
+                    setEnabled={setVoiceTranscribeEnabled}
+                    inputLang={voiceTranscribeInputLang}
+                    setInputLang={setVoiceTranscribeInputLang}
+                    targetLang={voiceTranscribeTargetLang}
+                    setTargetLang={setVoiceTranscribeTargetLang}
+                  />
+                );
                 if (item.type === 'report') return <ReportModal key={item.id} item={item} />;
                 if (item.type === 'fontSize') return <FontSizeModal key={item.id} item={item} fontSize={fontSize} updateFontSize={updateFontSize} />;
                 if (item.type === 'videoQuality') return <VideoQualityModal key={item.id} item={item} quality={defaultVideoQuality} updateQuality={updateDefaultVideoQuality} />;
@@ -806,6 +877,424 @@ function LanguageModal({ item }: { item: SettingItem }) {
               ))}
             </div>
           </ScrollArea>
+        </div>
+      </SheetContent>
+    </Sheet>
+  );
+}
+
+function VoiceTranslationModal({ 
+  item, 
+  enabled, 
+  setEnabled, 
+  inputLang, 
+  setInputLang, 
+  targetLang, 
+  setTargetLang 
+}: { 
+  item: SettingItem; 
+  enabled: boolean; 
+  setEnabled: (val: boolean) => void; 
+  inputLang: string; 
+  setInputLang: (val: string) => void; 
+  targetLang: string; 
+  setTargetLang: (val: string) => void; 
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+
+  // Testing Playground State
+  const [isTestingRecord, setIsTestingRecord] = useState(false);
+  const [testRecordingTime, setTestRecordingTime] = useState(0);
+  const [testOriginalText, setTestOriginalText] = useState('');
+  const [testTranslatedText, setTestTranslatedText] = useState('');
+  const [testAudioUrl, setTestAudioUrl] = useState<string | null>(null);
+
+  const testRecTimerRef = useRef<any>(null);
+  const testRecognitionRef = useRef<any>(null);
+  const testRecognitionTextRef = useRef<string>('');
+  const testAudioPlayerRef = useRef<HTMLAudioElement | null>(null);
+  const testTextAudioRef = useRef<HTMLAudioElement | null>(null);
+  const testTextAudioUrlRef = useRef<string>('');
+
+  // Text-to-Text testing states
+  const [testInputText, setTestInputText] = useState('');
+  const [testTextOriginal, setTestTextOriginal] = useState('');
+  const [testTextTranslated, setTestTextTranslated] = useState('');
+  const [testTextAudioUrl, setTestTextAudioUrl] = useState<string | null>(null);
+  const [isTranslatingText, setIsTranslatingText] = useState(false);
+
+  const startTestRecord = async () => {
+    setTestOriginalText('');
+    setTestTranslatedText('');
+    setTestAudioUrl(null);
+    testRecognitionTextRef.current = '';
+
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (SpeechRecognition) {
+      try {
+        await navigator.mediaDevices.getUserMedia({ audio: true });
+        
+        const rec = new SpeechRecognition();
+        rec.continuous = true;
+        rec.interimResults = false;
+        
+        const langConfig = VOICE_LANG_MAP[inputLang] || { bcp47: 'en-US', iso: 'en' };
+        rec.lang = langConfig.bcp47;
+        
+        let transcriptResult = '';
+        rec.onresult = (event: any) => {
+          for (let i = event.resultIndex; i < event.results.length; ++i) {
+            if (event.results[i].isFinal) {
+              transcriptResult += event.results[i][0].transcript + ' ';
+            }
+          }
+          testRecognitionTextRef.current = transcriptResult.trim();
+        };
+
+        rec.onerror = (err: any) => {
+          console.warn("Test recognition error:", err);
+        };
+
+        rec.start();
+        testRecognitionRef.current = rec;
+        setIsTestingRecord(true);
+        setTestRecordingTime(0);
+
+        testRecTimerRef.current = setInterval(() => {
+          setTestRecordingTime(prev => prev + 1);
+        }, 1000);
+
+        toast.info(`Microphone listening in ${inputLang}...`);
+      } catch (err) {
+        toast.error("Could not access microphone");
+      }
+    } else {
+      toast.error("Speech Recognition is not supported by your browser");
+    }
+  };
+
+  const stopTestRecord = async () => {
+    if (testRecTimerRef.current) clearInterval(testRecTimerRef.current);
+    setIsTestingRecord(false);
+
+    if (testRecognitionRef.current) {
+      testRecognitionRef.current.stop();
+      testRecognitionRef.current = null;
+    }
+
+    toast.loading("Translating test recording...", { id: "test-translation-toast" });
+    
+    await new Promise(r => setTimeout(r, 600));
+    const transcriptText = testRecognitionTextRef.current.trim();
+
+    if (transcriptText) {
+      setTestOriginalText(transcriptText);
+      try {
+        const inputConfig = VOICE_LANG_MAP[inputLang] || { iso: 'auto' };
+        const targetConfig = VOICE_LANG_MAP[targetLang] || { iso: 'ja' };
+
+        const translateUrl = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${inputConfig.iso}&tl=${targetConfig.iso}&dt=t&q=${encodeURIComponent(transcriptText)}`;
+        const res = await fetch(translateUrl);
+        const data = await res.json();
+        const translatedText = data[0][0][0] || transcriptText;
+        
+        setTestTranslatedText(translatedText);
+
+        const ttsUrl = `https://translate.google.com/translate_tts?ie=UTF-8&tl=${targetConfig.iso}&client=tw-ob&q=${encodeURIComponent(translatedText)}`;
+        setTestAudioUrl(ttsUrl);
+
+        toast.success("Test translation completed successfully!", { id: "test-translation-toast" });
+
+        if (testAudioPlayerRef.current) {
+          testAudioPlayerRef.current.src = ttsUrl;
+          testAudioPlayerRef.current.play().catch((e: any) => console.warn("Auto-play blocked by browser:", e));
+        }
+      } catch (e) {
+        console.error("Test translation failed:", e);
+        toast.error("Test translation failed", { id: "test-translation-toast" });
+      }
+    } else {
+      toast.error("No speech was recognized", { id: "test-translation-toast" });
+    }
+  };
+
+  const playTestAudio = () => {
+    if (testAudioPlayerRef.current && testAudioUrl) {
+      testAudioPlayerRef.current.play().catch((e: any) => console.warn("Play failed:", e));
+    }
+  };
+
+  const handleTestTextTranslate = async () => {
+    if (!testInputText.trim()) return;
+    setIsTranslatingText(true);
+    toast.loading("Translating text...", { id: "test-text-translation-toast" });
+
+    try {
+      const inputConfig = VOICE_LANG_MAP[inputLang] || { iso: 'auto' };
+      const targetConfig = VOICE_LANG_MAP[targetLang] || { iso: 'ja' };
+
+      const translateUrl = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${inputConfig.iso}&tl=${targetConfig.iso}&dt=t&q=${encodeURIComponent(testInputText)}`;
+      const res = await fetch(translateUrl);
+      const data = await res.json();
+      const translatedText = data[0][0][0] || testInputText;
+
+      setTestTextOriginal(testInputText);
+      setTestTextTranslated(translatedText);
+
+      const ttsUrl = `https://translate.google.com/translate_tts?ie=UTF-8&tl=${targetConfig.iso}&client=tw-ob&q=${encodeURIComponent(translatedText)}`;
+      setTestTextAudioUrl(ttsUrl);
+      testTextAudioUrlRef.current = ttsUrl;
+
+      toast.success("Text translated!", { id: "test-text-translation-toast" });
+
+      // Use dedicated audio element for text TTS
+      if (testTextAudioRef.current) {
+        testTextAudioRef.current.src = ttsUrl;
+        testTextAudioRef.current.load();
+        testTextAudioRef.current.play().catch((e: any) => console.warn("Auto-play blocked:", e));
+      }
+    } catch (e) {
+      console.error("Text translation failed:", e);
+      toast.error("Text translation failed", { id: "test-text-translation-toast" });
+    } finally {
+      setIsTranslatingText(false);
+    }
+  };
+
+  const playTestTextAudio = () => {
+    if (testTextAudioRef.current && testTextAudioUrlRef.current) {
+      testTextAudioRef.current.src = testTextAudioUrlRef.current;
+      testTextAudioRef.current.load();
+      testTextAudioRef.current.play().catch((e: any) => console.warn("Play failed:", e));
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      if (testRecTimerRef.current) clearInterval(testRecTimerRef.current);
+      if (testRecognitionRef.current) {
+        try {
+          testRecognitionRef.current.stop();
+        } catch (_) {}
+      }
+    };
+  }, []);
+
+  return (
+    <Sheet open={isOpen} onOpenChange={setIsOpen}>
+      <SheetTrigger asChild>
+        <div className="flex items-center justify-between p-4 cursor-pointer hover:bg-accent/50 transition-colors">
+          <div className="flex items-center gap-3">
+            <item.icon className="w-5 h-5 text-foreground" />
+            <span className="text-sm font-medium">{item.label}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground">{item.value}</span>
+            <ChevronRight className="w-4 h-4 text-muted-foreground" />
+          </div>
+        </div>
+      </SheetTrigger>
+      <SheetContent side="right" className="w-full p-0 bg-background">
+        <div className="flex flex-col h-full">
+          {/* Header */}
+          <div className="flex items-center gap-3 p-4 border-b border-border">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setIsOpen(false)}
+              className="shrink-0"
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </Button>
+            <h2 className="text-xl font-bold">Transcript in Voice Settings</h2>
+          </div>
+
+          {/* Content */}
+          <div className="flex-1 p-4 space-y-6 overflow-y-auto">
+            {/* Toggle Card */}
+            <div className="flex items-center justify-between p-4 bg-muted/20 border border-border rounded-xl">
+              <div className="space-y-0.5 text-left pr-2">
+                <span className="text-sm font-semibold block text-foreground">Enable Voice Translation</span>
+                <p className="text-xs text-muted-foreground">Translate spoken words and play target speech audio automatically.</p>
+              </div>
+              <Switch 
+                checked={enabled} 
+                onCheckedChange={(checked) => {
+                  setEnabled(checked);
+                  localStorage.setItem('voice_transcribe_enabled', String(checked));
+                  toast.success(`Voice translation ${checked ? 'enabled' : 'disabled'}`);
+                }} 
+              />
+            </div>
+
+            {/* Selector Fields */}
+            <div className="space-y-4">
+              <div className="space-y-1.5 text-left">
+                <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Speak In (Input Language)</label>
+                <select 
+                  value={inputLang} 
+                  onChange={(e) => {
+                    setInputLang(e.target.value);
+                    localStorage.setItem('voice_transcribe_input_lang', e.target.value);
+                    toast.success(`Input language set to ${e.target.value}`);
+                  }}
+                  className="w-full h-11 px-4 rounded-xl bg-muted border border-border text-sm outline-none focus:border-primary transition-colors cursor-pointer dark:bg-zinc-900 text-foreground"
+                >
+                  {languages.map((l) => (
+                    <option key={l} value={l} className="bg-background text-foreground">{l}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="space-y-1.5 text-left">
+                <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Translate To (Spoken Output)</label>
+                <select 
+                  value={targetLang} 
+                  onChange={(e) => {
+                    setTargetLang(e.target.value);
+                    localStorage.setItem('voice_transcribe_target_lang', e.target.value);
+                    toast.success(`Target language set to ${e.target.value}`);
+                  }}
+                  className="w-full h-11 px-4 rounded-xl bg-muted border border-border text-sm outline-none focus:border-primary transition-colors cursor-pointer dark:bg-zinc-900 text-foreground"
+                >
+                  {languages.map((l) => (
+                    <option key={l} value={l} className="bg-background text-foreground">{l}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="p-4 bg-primary/5 rounded-xl border border-primary/10 text-left">
+              <span className="text-xs font-bold text-primary block mb-1">✨ How it works</span>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                When enabled, the app will transcribe speech in the input language and translate it into the target language automatically. Spoken translations are synthesized in real-time.
+              </p>
+            </div>
+
+            {/* Live Testing Playground */}
+            <div className="space-y-4 pt-4 border-t border-border">
+              <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest block text-left">🧪 Test translation (Live preview)</span>
+              
+              <div className="flex flex-col items-center justify-center p-6 bg-muted/10 border border-dashed border-border rounded-2xl gap-4">
+                <button
+                  type="button"
+                  onClick={isTestingRecord ? stopTestRecord : startTestRecord}
+                  className={cn(
+                    "w-16 h-16 rounded-full flex items-center justify-center transition-all shadow-md relative active:scale-95",
+                    isTestingRecord 
+                      ? "bg-red-500 text-white animate-pulse shadow-red-500/30" 
+                      : "bg-primary text-primary-foreground hover:bg-primary/95"
+                  )}
+                >
+                  {isTestingRecord ? (
+                    <div className="w-4 h-4 bg-white rounded-sm animate-pulse" />
+                  ) : (
+                    <Volume2 className="w-8 h-8" />
+                  )}
+                  {isTestingRecord && (
+                    <span className="absolute -top-1 -right-1 flex h-4 w-4">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-4 w-4 bg-red-500"></span>
+                    </span>
+                  )}
+                </button>
+
+                <div className="text-center space-y-1">
+                  <span className="text-xs font-bold text-foreground block">
+                    {isTestingRecord ? `Recording... (${testRecordingTime}s)` : "Tap to Speak & Translate"}
+                  </span>
+                  <p className="text-[10px] text-muted-foreground">
+                    {isTestingRecord 
+                      ? `Speak in ${inputLang} now` 
+                      : `Talk in ${inputLang} to hear translation in ${targetLang}`}
+                  </p>
+                </div>
+
+                {(testOriginalText || testTranslatedText) && (
+                  <div className="w-full space-y-2 mt-2 pt-2 border-t border-border/60 text-left text-xs">
+                    {testOriginalText && (
+                      <div className="space-y-0.5 animate-in fade-in duration-200">
+                        <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">🗣️ Original ({inputLang})</span>
+                        <p className="p-2.5 rounded-lg bg-muted text-foreground leading-relaxed">{testOriginalText}</p>
+                      </div>
+                    )}
+                    {testTranslatedText && (
+                      <div className="space-y-0.5 animate-in fade-in duration-300">
+                        <span className="text-[10px] font-bold text-primary uppercase tracking-wider block flex items-center gap-1">
+                          ✨ Translated ({targetLang})
+                          {testAudioUrl && (
+                            <button 
+                              type="button" 
+                              onClick={playTestAudio}
+                              className="ml-auto p-1 text-primary hover:bg-primary/10 rounded"
+                            >
+                              <PlayCircle className="w-4 h-4" />
+                            </button>
+                          )}
+                        </span>
+                        <p className="p-2.5 rounded-lg bg-primary/5 border border-primary/20 text-foreground leading-relaxed">
+                          {testTranslatedText}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Text Translation Testing Playground */}
+            <div className="space-y-4 pt-4 border-t border-border">
+              <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest block text-left">✍️ Test Text Translation</span>
+              
+              <div className="flex flex-col gap-3 p-4 bg-muted/10 border border-border rounded-xl">
+                <div className="space-y-1 text-left">
+                  <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">Type in {inputLang}</label>
+                  <textarea
+                    value={testInputText}
+                    onChange={(e) => setTestInputText(e.target.value)}
+                    placeholder={`e.g. Hello, how are you?`}
+                    className="w-full min-h-[60px] p-2.5 rounded-lg bg-muted border border-border text-xs outline-none focus:border-primary resize-none text-foreground"
+                  />
+                </div>
+
+                <Button
+                  type="button"
+                  onClick={handleTestTextTranslate}
+                  disabled={!testInputText.trim() || isTranslatingText}
+                  className="w-full text-xs font-semibold h-9"
+                >
+                  {isTranslatingText ? "Translating..." : "Translate & Speak"}
+                </Button>
+
+                {(testTextOriginal || testTextTranslated) && (
+                  <div className="w-full space-y-2 mt-1 pt-2 border-t border-border/60 text-left text-xs">
+                    {testTextTranslated && (
+                      <div className="space-y-0.5 animate-in fade-in duration-200">
+                        <span className="text-[10px] font-bold text-primary uppercase tracking-wider block flex items-center gap-1">
+                          ✨ Translation ({targetLang})
+                          {testTextAudioUrl && (
+                            <button 
+                              type="button" 
+                              onClick={playTestTextAudio}
+                              className="ml-auto p-1 text-primary hover:bg-primary/10 rounded"
+                            >
+                              <PlayCircle className="w-4 h-4" />
+                            </button>
+                          )}
+                        </span>
+                        <p className="p-2.5 rounded-lg bg-primary/5 border border-primary/20 text-foreground leading-relaxed">
+                          {testTextTranslated}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+            
+            <audio ref={testAudioPlayerRef} className="hidden" />
+            <audio ref={testTextAudioRef} className="hidden" />
+          </div>
         </div>
       </SheetContent>
     </Sheet>

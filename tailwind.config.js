@@ -161,6 +161,11 @@ export default {
                 'slide-in': 'slide-in 0.5s ease-out',
                 'spin-slow': 'spin-slow 20s linear infinite',
                 'spin-reverse': 'spin-reverse 15s linear infinite'
+            },
+            gridTemplateColumns: {
+                13: 'repeat(13, minmax(0, 1fr))',
+                4: 'repeat(4, minmax(0, 1fr))',
+                2: 'repeat(2, minmax(0, 1fr))'
             }
         }
     },

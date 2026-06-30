@@ -148,9 +148,9 @@ export default function PaymentGift() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="flex flex-col h-full bg-background">
       {/* Header */}
-      <div className="sticky top-0 z-10 bg-background border-b border-border">
+      <div className="sticky top-0 z-10 bg-background border-b border-border shrink-0">
         <div className="flex items-center justify-between p-4">
           <div className="flex items-center gap-4">
             <Button
@@ -165,7 +165,7 @@ export default function PaymentGift() {
         </div>
       </div>
 
-      <div className="p-4 space-y-6">
+      <div className="flex-1 overflow-y-auto p-4 space-y-6 pb-24">
         {/* Balance Card */}
         <Card className="p-6 bg-gradient-to-br from-primary/10 to-primary/5">
           <div className="flex items-center justify-between mb-4">

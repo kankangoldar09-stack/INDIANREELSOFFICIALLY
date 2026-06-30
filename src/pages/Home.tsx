@@ -1,42 +1,42 @@
-import { useEffect, useState, useRef } from 'react';
-import { overlayClassName, overlayStyle } from '@/lib/overlayConstants';
-import { supabase } from '../db/supabase';
-import { Post, Story, Profile, Reel } from '@/types';
-import { useAuth } from '@/contexts/AuthContext';
-import { useSettings } from '@/contexts/SettingsContext';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { formatDistanceToNow } from 'date-fns';
+import { Bike, Bookmark, Check, Eye, 
+  Heart, MessageCircle, MoreHorizontal, Pause, 
+  Play, PlusSquare, RefreshCw, Search, Send, Subtitles, ThumbsUp, Trash2, Video, Volume2, VolumeX 
+} from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { toast } from 'sonner';
+import { Captions } from '@/components/common/Captions';
+import { CommentsSheet } from '@/components/common/CommentsSheet';
+import Counter from '@/components/common/Counter';
+import { FullScreenImage } from '@/components/common/FullScreenImage';
+import { ShareSheet } from '@/components/common/ShareSheet';
+import ProductCard from '@/components/ProductCard';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { useVoiceGuidance } from '@/hooks/useVoiceGuidance';
-import { 
-  Heart, MessageCircle, Send, Bookmark, MoreHorizontal, Volume2, VolumeX, Subtitles, 
-  Play, Pause, Trash2, PlusSquare, Eye, ThumbsUp, Bike, RefreshCw, Video, Search
-} from 'lucide-react';
-import { VerificationBadge } from '@/components/VerificationBadge';
-import { Skeleton } from '@/components/ui/skeleton';
-import { toast } from 'sonner';
-import { useNavigate, Link, useSearchParams } from 'react-router-dom';
-import { formatDistanceToNow } from 'date-fns';
-import { cn } from '@/lib/utils';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
   DropdownMenuItem, 
   DropdownMenuLabel,
+  DropdownMenuPortal,
   DropdownMenuSeparator,
-  DropdownMenuTrigger,
   DropdownMenuSub,
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
-  DropdownMenuPortal,
+  DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { CommentsSheet } from '@/components/common/CommentsSheet';
-import { FullScreenImage } from '@/components/common/FullScreenImage';
-import { ShareSheet } from '@/components/common/ShareSheet';
-import { Captions } from '@/components/common/Captions';
-import Counter from '@/components/common/Counter';
-import { Check } from 'lucide-react';
-import ProductCard from '@/components/ProductCard';
+import IndianSpinner from '@/components/ui/IndianSpinner';
+import { Skeleton } from '@/components/ui/skeleton';
+import { VerificationBadge } from '@/components/VerificationBadge';
+import { useAuth } from '@/contexts/AuthContext';
+import { useSettings } from '@/contexts/SettingsContext';
+import { useVoiceGuidance } from '@/hooks/useVoiceGuidance';
+import { overlayClassName, overlayStyle } from '@/lib/overlayConstants';
+import { cn } from '@/lib/utils';
+import { Post, Profile, Reel, Story } from '@/types';
+import { supabase } from '../db/supabase';
 
 export default function Home() {
   const { profile } = useAuth();
@@ -386,6 +386,7 @@ function PostCard({ post, isReel, onDelete, globalMuted, setGlobalMuted, isActiv
   const [showFlag, setShowFlag] = useState(false);
   const [lastTap, setLastTap] = useState(0);
   const singleTapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const swipeTouchStartX = useRef<number>(0);
   const [showFullScreenProfile, setShowFullScreenProfile] = useState(false);
   const [showShareSheet, setShowShareSheet] = useState(false);
   const [isSaved, setIsSaved] = useState(post.is_saved || false);
@@ -397,6 +398,8 @@ function PostCard({ post, isReel, onDelete, globalMuted, setGlobalMuted, isActiv
   const [isSeeking, setIsSeeking] = useState(false);
   const { defaultVideoQuality } = useSettings();
   const [currentQuality, setCurrentQuality] = useState(defaultVideoQuality || '1080p');
+  const [isQualitySwitching, setIsQualitySwitching] = useState(false);
+  const seekTargetRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (videoRef.current) {
@@ -555,6 +558,21 @@ function PostCard({ post, isReel, onDelete, globalMuted, setGlobalMuted, isActiv
       videoRef.current.pause();
       setPaused(true);
     }
+  };
+
+  const handleQualityChange = (q: string) => {
+    if (q === currentQuality) return;
+    const video = videoRef.current;
+    if (video) {
+      seekTargetRef.current = video.currentTime;
+      video.pause();
+    }
+    setIsQualitySwitching(true);
+    setTimeout(() => {
+      setCurrentQuality(q);
+      setIsQualitySwitching(false);
+      toast.success(`Quality set to ${q}`);
+    }, 700);
   };
 
   const toggleMute = (e: React.MouseEvent) => {
@@ -776,10 +794,7 @@ function PostCard({ post, isReel, onDelete, globalMuted, setGlobalMuted, isActiv
                       <DropdownMenuItem 
                         key={q}
                         className="text-sm flex justify-between items-center"
-                        onClick={() => {
-                          setCurrentQuality(q);
-                          toast.success(`Quality set to ${q}`);
-                        }}
+                        onClick={() => handleQualityChange(q)}
                       >
                         {q}
                         {currentQuality === q && <Check className="w-4 h-4 text-primary" />}
@@ -814,8 +829,52 @@ function PostCard({ post, isReel, onDelete, globalMuted, setGlobalMuted, isActiv
           onClick={isReel ? handleTap : undefined}
           onMouseEnter={!isReel ? handleRecordView : undefined}
         >
+          {/* Quality switching loader overlay */}
+          {isQualitySwitching && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/60 backdrop-blur-[2px] z-50 pointer-events-none">
+              <IndianSpinner size="lg" />
+              <span className="mt-4 text-xs font-bold text-white tracking-widest uppercase animate-pulse">
+                Adjusting to {currentQuality}...
+              </span>
+            </div>
+          )}
+
+          {/* Quality indicator badge */}
+          {isReel && (
+            <div className={cn(
+              "absolute top-4 left-4 z-40 bg-black/60 backdrop-blur-md px-2.5 py-1 rounded-md border flex items-center gap-1.5 shadow-lg pointer-events-none transition-all duration-300",
+              (currentQuality === '2K' || currentQuality === '4K') 
+                ? "border-amber-500/50 text-amber-400 shadow-amber-500/10" 
+                : "border-white/15 text-zinc-300"
+            )}>
+              <span className={cn(
+                "w-1.5 h-1.5 rounded-full animate-pulse",
+                (currentQuality === '2K' || currentQuality === '4K') ? "bg-amber-400" : "bg-green-500"
+              )}></span>
+              <span className="text-[10px] font-black tracking-wider uppercase flex items-center gap-1">
+                {currentQuality}
+                {(currentQuality === '2K' || currentQuality === '4K' || currentQuality === '1080p') && (
+                  <span className="text-[8px] bg-white/10 px-1 rounded text-white font-extrabold scale-90 origin-left">HD</span>
+                )}
+              </span>
+            </div>
+          )}
           {post.media_gallery && post.media_gallery.length > 0 ? (
-            <div className="w-full h-full relative" onClick={isReel ? handleTap : undefined}>
+            <div
+              className="w-full h-full relative"
+              onClick={isReel ? handleTap : undefined}
+              onTouchStart={(e) => { swipeTouchStartX.current = e.touches[0].clientX; }}
+              onTouchEnd={(e) => {
+                const dx = e.changedTouches[0].clientX - swipeTouchStartX.current;
+                if (Math.abs(dx) > 40) {
+                  if (dx < 0 && currentCarouselIndex < post.media_gallery.length - 1) {
+                    setCurrentCarouselIndex(prev => prev + 1);
+                  } else if (dx > 0 && currentCarouselIndex > 0) {
+                    setCurrentCarouselIndex(prev => prev - 1);
+                  }
+                }
+              }}
+            >
               {post.media_gallery[currentCarouselIndex]?.match(/\.(mp4|webm|ogg|mov)$/i) || (isReel && currentCarouselIndex === 0) ? (
                 <video
                   ref={videoRef}
@@ -899,28 +958,37 @@ function PostCard({ post, isReel, onDelete, globalMuted, setGlobalMuted, isActiv
                 ref={videoRef}
                 src={((post as any).is_chunked && (post as any).chunk_urls?.length > 0) 
                   ? (post as any).chunk_urls[currentChunkIndex] 
-                  : (post as any).video_url} 
+                  : `${(post as any).video_url}${(post as any).video_url.includes('?') ? '&' : '?'}quality=${currentQuality}`} 
+                style={{
+                  filter: 
+                    currentQuality === '480p' ? 'blur(1.2px) contrast(0.95) saturate(0.9)' :
+                    currentQuality === '720p' ? 'blur(0.5px)' :
+                    currentQuality === '1080p' ? 'none' :
+                    currentQuality === '2K' ? 'contrast(1.05) saturate(1.05) brightness(1.02)' :
+                    currentQuality === '4K' ? 'contrast(1.1) saturate(1.1) brightness(1.04) drop-shadow(0 0 1px rgba(255,255,255,0.15))' :
+                    'none'
+                }}
                 poster={post.thumbnail_url || undefined}
                 className="w-full h-full object-contain bg-black shadow-2xl" 
                 loop={false}
-                muted={!isActive || globalMuted}
+                muted={isReel ? (!isActive || globalMuted) : globalMuted}
                 playsInline
-                autoPlay={false}
-                onEnded={() => {
-                  if ((post as any).is_chunked && (post as any).chunk_urls && currentChunkIndex < (post as any).chunk_urls.length - 1) {
-                    setCurrentChunkIndex(prev => prev + 1);
-                  } else {
-                    setEnded(true);
-                  }
-                }}
+                autoPlay={isReel ? isActive : false}
                 onTimeUpdate={() => {
-                   if (videoRef.current) {
-                      setCurrentTime(videoRef.current.currentTime);
-                   }
+                  if (videoRef.current) {
+                    setCurrentTime(videoRef.current.currentTime);
+                  }
                 }}
                 onLoadedMetadata={() => {
                   if (videoRef.current) {
                     setDuration(videoRef.current.duration);
+                    if (seekTargetRef.current !== null) {
+                      videoRef.current.currentTime = seekTargetRef.current;
+                      seekTargetRef.current = null;
+                      if (!paused && isActive) {
+                        videoRef.current.play().catch(console.error);
+                      }
+                    }
                   }
                 }}
               />
@@ -1037,7 +1105,18 @@ function PostCard({ post, isReel, onDelete, globalMuted, setGlobalMuted, isActiv
                 <>
                   <video 
                     ref={videoRef}
-                    src={(post.is_chunked && post.chunk_urls && post.chunk_urls.length > 0) ? post.chunk_urls[currentChunkIndex] : post.media_url} 
+                    src={(post.is_chunked && post.chunk_urls && post.chunk_urls.length > 0) 
+                      ? post.chunk_urls[currentChunkIndex] 
+                      : `${post.media_url}${post.media_url.includes('?') ? '&' : '?'}quality=${currentQuality}`} 
+                    style={{
+                      filter: 
+                        currentQuality === '480p' ? 'blur(1.2px) contrast(0.95) saturate(0.9)' :
+                        currentQuality === '720p' ? 'blur(0.5px)' :
+                        currentQuality === '1080p' ? 'none' :
+                        currentQuality === '2K' ? 'contrast(1.05) saturate(1.05) brightness(1.02)' :
+                        currentQuality === '4K' ? 'contrast(1.1) saturate(1.1) brightness(1.04) drop-shadow(0 0 1px rgba(255,255,255,0.15))' :
+                        'none'
+                    }}
                     poster={post.thumbnail_url || undefined}
                     className="w-full h-full object-contain bg-black" 
                     controls
@@ -1049,6 +1128,14 @@ function PostCard({ post, isReel, onDelete, globalMuted, setGlobalMuted, isActiv
                     onEnded={() => {
                       if (post.is_chunked && post.chunk_urls && currentChunkIndex < post.chunk_urls.length - 1) {
                         setCurrentChunkIndex(prev => prev + 1);
+                      }
+                    }}
+                    onLoadedMetadata={() => {
+                      if (videoRef.current) {
+                        if (seekTargetRef.current !== null) {
+                          videoRef.current.currentTime = seekTargetRef.current;
+                          seekTargetRef.current = null;
+                        }
                       }
                     }}
                   />

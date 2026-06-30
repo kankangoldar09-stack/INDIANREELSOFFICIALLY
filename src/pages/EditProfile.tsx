@@ -211,13 +211,16 @@ export default function EditProfile() {
   };
 
   return (
-    <div className="max-w-2xl mx-auto pb-20">
-      <div className="flex items-center gap-4 p-4 border-b sticky top-0 bg-background z-10">
+    <div className="flex flex-col h-full bg-background">
+      <div className="flex items-center gap-4 p-4 border-b sticky top-0 bg-background z-10 shrink-0">
         <button onClick={() => navigate(-1)} className="p-2 hover:bg-accent rounded-full transition-colors">
           <ChevronLeft className="w-6 h-6" />
         </button>
         <h1 className="text-xl font-bold">Edit Profile</h1>
       </div>
+
+      <div className="flex-1 overflow-y-auto w-full">
+        <div className="max-w-2xl mx-auto pb-24">
 
       <div className="flex flex-col items-center gap-4 py-8 border-b">
         <div className="relative">
@@ -316,6 +319,8 @@ export default function EditProfile() {
           <Button className="w-full" size="lg" disabled={loading} onClick={handleUpdate}>
             {loading ? 'Saving...' : 'Save Changes'}
           </Button>
+        </div>
+      </div>
         </div>
       </div>
     </div>

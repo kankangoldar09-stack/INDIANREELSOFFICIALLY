@@ -1,33 +1,33 @@
-import { useState, useEffect, useRef } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
-import { supabase } from '@/db/supabase';
-import { Profile, Message } from '@/types';
-import { useAuth } from '@/contexts/AuthContext';
-import { useSettings } from '@/contexts/SettingsContext';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Skeleton } from '@/components/ui/skeleton';
+import { Bot, Camera, 
+  ChevronLeft, Download, Gift, Heart, Image as ImageIcon, Info, LogOut, MoreVertical,PenTool, 
+  Phone, PlayCircle, Plus, RefreshCw, Send, Smile, Trash2, Users, Video, 
+  Volume2, X 
+} from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
-import { FullScreenImage } from '@/components/common/FullScreenImage';
 import { DrawingCanvas } from '@/components/common/DrawingCanvas';
+import { EmojiBlast } from '@/components/common/EmojiBlast';
+import { FullScreenImage } from '@/components/common/FullScreenImage';
 import { GifSelector } from '@/components/common/GifSelector';
 import { GiftSheet } from '@/components/common/GiftSheet';
-import { EmojiBlast } from '@/components/common/EmojiBlast';
+import IncomingCallModal from '@/components/IncomingCallModal';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Button } from '@/components/ui/button';
+import { 
+  Dialog, DialogContent, 
+  DialogFooter, DialogHeader, DialogTitle, DialogTrigger
+} from '@/components/ui/dialog';
+import IndianSpinner from '@/components/ui/IndianSpinner';
+import { Input } from '@/components/ui/input';
+import { Skeleton } from '@/components/ui/skeleton';
 import VideoCallScreen from '@/components/VideoCallScreen';
 import VoiceCallScreen from '@/components/VoiceCallScreen';
-import IncomingCallModal from '@/components/IncomingCallModal';
-import { 
-  ChevronLeft, Info, Camera, Image as ImageIcon, Heart, Send, Smile, 
-  Phone, Video, Download, X, PenTool, Users, LogOut, Plus, Trash2, MoreVertical,
-  Volume2, PlayCircle, RefreshCw, Bot, Gift
-} from 'lucide-react';
-import { 
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
-  DialogFooter
-} from '@/components/ui/dialog';
+import { useAuth } from '@/contexts/AuthContext';
+import { useSettings } from '@/contexts/SettingsContext';
+import { supabase } from '@/db/supabase';
 import { cn } from '@/lib/utils';
-import IndianSpinner from '@/components/ui/IndianSpinner';
+import { Message, Profile } from '@/types';
 
 interface IncomingCall {
   room_name: string;
@@ -44,6 +44,61 @@ interface Group {
   creator_id: string;
   created_at: string;
 }
+
+const VOICE_LANG_MAP: Record<string, { bcp47: string; iso: string }> = {
+  "English": { bcp47: "en-US", iso: "en" },
+  "Hindi": { bcp47: "hi-IN", iso: "hi" },
+  "Bengali": { bcp47: "bn-IN", iso: "bn" },
+  "Telugu": { bcp47: "te-IN", iso: "te" },
+  "Marathi": { bcp47: "mr-IN", iso: "mr" },
+  "Tamil": { bcp47: "ta-IN", iso: "ta" },
+  "Gujarati": { bcp47: "gu-IN", iso: "gu" },
+  "Urdu": { bcp47: "ur-PK", iso: "ur" },
+  "Kannada": { bcp47: "kn-IN", iso: "kn" },
+  "Odia": { bcp47: "or-IN", iso: "or" },
+  "Punjabi": { bcp47: "pa-IN", iso: "pa" },
+  "Malayalam": { bcp47: "ml-IN", iso: "ml" },
+  "Assamese": { bcp47: "as-IN", iso: "as" },
+  "Kashmiri": { bcp47: "ks-IN", iso: "ks" },
+  "Nepali": { bcp47: "ne-NP", iso: "ne" },
+  "Spanish": { bcp47: "es-ES", iso: "es" },
+  "French": { bcp47: "fr-FR", iso: "fr" },
+  "German": { bcp47: "de-DE", iso: "de" },
+  "Chinese": { bcp47: "zh-CN", iso: "zh" },
+  "Japanese": { bcp47: "ja-JP", iso: "ja" },
+  "Korean": { bcp47: "ko-KR", iso: "ko" },
+  "Russian": { bcp47: "ru-RU", iso: "ru" },
+  "Portuguese": { bcp47: "pt-PT", iso: "pt" },
+  "Italian": { bcp47: "it-IT", iso: "it" },
+  "Arabic": { bcp47: "ar-SA", iso: "ar" },
+  "Turkish": { bcp47: "tr-TR", iso: "tr" },
+  "Vietnamese": { bcp47: "vi-VN", iso: "vi" },
+  "Thai": { bcp47: "th-TH", iso: "th" },
+  "Indonesian": { bcp47: "id-ID", iso: "id" },
+  "Dutch": { bcp47: "nl-NL", iso: "nl" },
+  "Polish": { bcp47: "pl-PL", iso: "pl" },
+  "Swedish": { bcp47: "sv-SE", iso: "sv" },
+  "Greek": { bcp47: "el-GR", iso: "el" },
+  "Czech": { bcp47: "cs-CZ", iso: "cs" },
+  "Danish": { bcp47: "da-DK", iso: "da" },
+  "Finnish": { bcp47: "fi-FI", iso: "fi" },
+  "Hungarian": { bcp47: "hu-HU", iso: "hu" },
+  "Norwegian": { bcp47: "no-NO", iso: "no" },
+  "Romanian": { bcp47: "ro-RO", iso: "ro" },
+  "Ukrainian": { bcp47: "uk-UA", iso: "uk" },
+  "Hebrew": { bcp47: "he-IL", iso: "he" },
+  "Malay": { bcp47: "ms-MY", iso: "ms" },
+  "Persian": { bcp47: "fa-IR", iso: "fa" },
+  "Pashto": { bcp47: "ps-AF", iso: "ps" },
+  "Amharic": { bcp47: "am-ET", iso: "am" },
+  "Burmese": { bcp47: "my-MM", iso: "my" },
+  "Khmer": { bcp47: "km-KH", iso: "km" },
+  "Lao": { bcp47: "lo-LA", iso: "lo" },
+  "Sinhala": { bcp47: "si-LK", iso: "si" },
+  "Kazakh": { bcp47: "kk-KZ", iso: "kk" },
+  "Uzbek": { bcp47: "uz-UZ", iso: "uz" },
+  "Azerbaijani": { bcp47: "az-AZ", iso: "az" }
+};
 
 export default function IndividualChat({ isGroup = false }: { isGroup?: boolean }) {
   const { username, groupId } = useParams<{ username?: string; groupId?: string }>();
@@ -73,6 +128,11 @@ export default function IndividualChat({ isGroup = false }: { isGroup?: boolean 
   const [voicePreviewBlob, setVoicePreviewBlob] = useState<Blob | null>(null);
   const [voicePreviewUrl, setVoicePreviewUrl] = useState<string | null>(null);
   const holdTimerRef = useRef<any>(null);
+
+  // Voice translation states
+  const [recognition, setRecognition] = useState<any>(null);
+  const [translatedTextPreview, setTranslatedTextPreview] = useState<string | null>(null);
+  const recognitionTextRef = useRef<string>('');
   const [activeCall, setActiveCall] = useState<{ type: 'video' | 'voice'; roomId: string } | null>(null);
   const [showIncomingCall, setShowIncomingCall] = useState(false);
   const [incomingCallData, setIncomingCallData] = useState<{ callerName: string; callerAvatar?: string; callType: 'video' | 'voice'; roomName: string } | null>(null);
@@ -88,6 +148,21 @@ export default function IndividualChat({ isGroup = false }: { isGroup?: boolean 
     if ('Notification' in window && Notification.permission === 'default') {
       Notification.requestPermission();
     }
+  }, []);
+
+  // ── Dark Mode Detection for Chat Background ──────────────────────────────
+  const [isDarkMode, setIsDarkMode] = useState(true);
+  useEffect(() => {
+    const checkTheme = () => {
+      const isDark = document.documentElement.classList.contains('dark');
+      setIsDarkMode(isDark);
+    };
+    checkTheme();
+    
+    // Set up a MutationObserver to watch for class changes on documentElement
+    const observer = new MutationObserver(checkTheme);
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+    return () => observer.disconnect();
   }, []);
 
   // ── Soft bubble-pop sound (two-tone, pleasant) ───────────────────────────
@@ -394,19 +469,95 @@ export default function IndividualChat({ isGroup = false }: { isGroup?: boolean 
   };
 
   const startRecording = async () => {
+    // Reset transcript ref
+    recognitionTextRef.current = '';
+
+    if (localStorage.getItem('voice_transcribe_enabled') === 'true') {
+      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+      if (SpeechRecognition) {
+        const rec = new SpeechRecognition();
+        rec.continuous = true;
+        rec.interimResults = false;
+        
+        const inputLangPref = localStorage.getItem('voice_transcribe_input_lang') || 'English';
+        const langConfig = VOICE_LANG_MAP[inputLangPref] || { bcp47: 'en-US', iso: 'en' };
+        rec.lang = langConfig.bcp47;
+        
+        let transcriptResult = '';
+        rec.onresult = (event: any) => {
+          for (let i = event.resultIndex; i < event.results.length; ++i) {
+            if (event.results[i].isFinal) {
+              transcriptResult += event.results[i][0].transcript + ' ';
+            }
+          }
+          recognitionTextRef.current = transcriptResult.trim();
+        };
+        
+        rec.onerror = (err: any) => {
+          console.warn("Speech recognition error:", err);
+        };
+        
+        rec.start();
+        setRecognition(rec);
+      }
+    }
+
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const mediaRecorder = new MediaRecorder(stream);
       const chunks: Blob[] = [];
 
       mediaRecorder.ondataavailable = (e) => chunks.push(e.data);
-      mediaRecorder.onstop = () => {
+      mediaRecorder.onstop = async () => {
         stream.getTracks().forEach(track => track.stop());
-        if (chunks.length > 0) {
-          const audioBlob = new Blob(chunks, { type: 'audio/webm' });
-          const url = URL.createObjectURL(audioBlob);
-          setVoicePreviewBlob(audioBlob);
-          setVoicePreviewUrl(url);
+        
+        const isEnabled = localStorage.getItem('voice_transcribe_enabled') === 'true';
+        const originalBlob = chunks.length > 0 ? new Blob(chunks, { type: 'audio/webm' }) : null;
+        const originalUrl = originalBlob ? URL.createObjectURL(originalBlob) : null;
+        
+        if (isEnabled) {
+          // Wait slightly for speech recognition to finalize transcription
+          await new Promise(r => setTimeout(r, 600));
+          const transcriptText = recognitionTextRef.current.trim();
+          
+          if (transcriptText) {
+            toast.loading("Translating voice...", { id: "voice-translation-toast" });
+            try {
+              const inputLangPref = localStorage.getItem('voice_transcribe_input_lang') || 'English';
+              const targetLangPref = localStorage.getItem('voice_transcribe_target_lang') || 'Japanese';
+              
+              const inputLangConfig = VOICE_LANG_MAP[inputLangPref] || { iso: 'auto' };
+              const targetLangConfig = VOICE_LANG_MAP[targetLangPref] || { iso: 'ja' };
+              
+              const translateUrl = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${inputLangConfig.iso}&tl=${targetLangConfig.iso}&dt=t&q=${encodeURIComponent(transcriptText)}`;
+              const translationRes = await fetch(translateUrl);
+              const translationData = await translationRes.json();
+              const translatedText = translationData[0][0][0] || transcriptText;
+              
+              const ttsUrl = `https://translate.google.com/translate_tts?ie=UTF-8&tl=${targetLangConfig.iso}&client=tw-ob&q=${encodeURIComponent(translatedText)}`;
+              
+              setVoicePreviewBlob(originalBlob || new Blob([], { type: 'audio/webm' }));
+              setVoicePreviewUrl(ttsUrl);
+              setTranslatedTextPreview(translatedText);
+              
+              toast.success("Translated & voice transcript ready!", { id: "voice-translation-toast" });
+            } catch (err) {
+              console.warn("Translation failed, using original audio:", err);
+              toast.error("Translation failed, using original audio", { id: "voice-translation-toast" });
+              setVoicePreviewBlob(originalBlob);
+              setVoicePreviewUrl(originalUrl);
+              setTranslatedTextPreview(null);
+            }
+          } else {
+            toast.error("No speech detected, sending original audio", { id: "voice-translation-toast" });
+            setVoicePreviewBlob(originalBlob);
+            setVoicePreviewUrl(originalUrl);
+            setTranslatedTextPreview(null);
+          }
+        } else {
+          setVoicePreviewBlob(originalBlob);
+          setVoicePreviewUrl(originalUrl);
+          setTranslatedTextPreview(null);
         }
       };
 
@@ -429,6 +580,10 @@ export default function IndividualChat({ isGroup = false }: { isGroup?: boolean 
       setIsRecording(false);
       clearInterval(recordingTimerRef.current);
     }
+    if (recognition) {
+      recognition.stop();
+      setRecognition(null);
+    }
   };
 
   const cancelRecording = () => {
@@ -440,19 +595,39 @@ export default function IndividualChat({ isGroup = false }: { isGroup?: boolean 
       setRecordingTime(0);
       clearInterval(recordingTimerRef.current);
     }
+    if (recognition) {
+      recognition.stop();
+      setRecognition(null);
+    }
     // Also discard preview
-    if (voicePreviewUrl) URL.revokeObjectURL(voicePreviewUrl);
+    if (voicePreviewUrl && !voicePreviewUrl.startsWith('https://translate.google.com')) {
+      URL.revokeObjectURL(voicePreviewUrl);
+    }
     setVoicePreviewBlob(null);
     setVoicePreviewUrl(null);
+    setTranslatedTextPreview(null);
   };
 
   const sendVoicePreview = async () => {
-    if (!voicePreviewBlob) return;
-    const blob = voicePreviewBlob;
-    if (voicePreviewUrl) URL.revokeObjectURL(voicePreviewUrl);
-    setVoicePreviewBlob(null);
-    setVoicePreviewUrl(null);
-    await handleVoiceUpload(blob);
+    if (!voicePreviewUrl) return;
+
+    if (translatedTextPreview) {
+      const ttsUrl = voicePreviewUrl;
+      const text = translatedTextPreview;
+      setVoicePreviewBlob(null);
+      setVoicePreviewUrl(null);
+      setTranslatedTextPreview(null);
+      await sendMessage(ttsUrl, 'voice', text);
+    } else if (voicePreviewBlob) {
+      const blob = voicePreviewBlob;
+      if (voicePreviewUrl && !voicePreviewUrl.startsWith('https://translate.google.com')) {
+        URL.revokeObjectURL(voicePreviewUrl);
+      }
+      setVoicePreviewBlob(null);
+      setVoicePreviewUrl(null);
+      setTranslatedTextPreview(null);
+      await handleVoiceUpload(blob);
+    }
   };
 
   // Cleanup recording on component unmount or navigation
@@ -951,7 +1126,16 @@ export default function IndividualChat({ isGroup = false }: { isGroup?: boolean 
 
   const renderMessageContent = (msg: Message) => {
     if (msg.media_type === 'voice') {
-      return <VoicePlayer url={msg.media_url!} />;
+      return (
+        <div className="flex flex-col gap-1.5 w-full">
+          <VoicePlayer url={msg.media_url!} />
+          {msg.content && (
+            <p className="text-xs italic opacity-95 text-left border-t border-white/10 pt-1.5 mt-1 select-text">
+              {msg.content}
+            </p>
+          )}
+        </div>
+      );
     }
 
     // Gift message rendering
@@ -1094,6 +1278,22 @@ export default function IndividualChat({ isGroup = false }: { isGroup?: boolean 
   // Check if Love Pink theme is active
   const isLovePinkTheme = chatBackgroundUrl === 'love-pink-theme';
 
+  const isDefaultBg = !isLovePinkTheme && (!chatBackgroundUrl || chatBackgroundStyle === 'default');
+
+  const defaultBgStyle = isDefaultBg ? {
+    backgroundImage: isDarkMode
+      ? `radial-gradient(circle at 50% 0%, hsl(var(--primary) / 0.08) 0%, transparent 60%), radial-gradient(circle at 1.5px 1.5px, rgba(255, 255, 255, 0.035) 1.5px, transparent 0), linear-gradient(180deg, #07070a 0%, #0d0b18 50%, #07070a 100%)`
+      : `radial-gradient(circle at 50% 0%, hsl(var(--primary) / 0.08) 0%, transparent 60%), radial-gradient(circle at 1.5px 1.5px, rgba(0, 0, 0, 0.035) 1.5px, transparent 0), linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%)`,
+    backgroundSize: '100% 100%, 24px 24px, 100% 100%',
+    backgroundRepeat: 'no-repeat, repeat, no-repeat',
+  } : {
+    backgroundImage: !isLovePinkTheme && chatBackgroundStyle === 'image' ? `url(${chatBackgroundUrl})` : !isLovePinkTheme && chatBackgroundUrl?.startsWith('linear-gradient') ? chatBackgroundUrl : 'none',
+    backgroundColor: !isLovePinkTheme && (chatBackgroundStyle === 'color' && !chatBackgroundUrl?.startsWith('linear-gradient') ? chatBackgroundUrl : undefined) as any,
+    backgroundSize: 'cover',
+    backgroundPosition: 'center',
+    backgroundAttachment: 'fixed'
+  };
+
   return (
     <>
       {/* ── Beautiful In-App Notification Banner ── */}
@@ -1164,15 +1364,9 @@ export default function IndividualChat({ isGroup = false }: { isGroup?: boolean 
       <div 
       className={cn(
         "flex flex-col h-full md:h-screen relative overflow-hidden",
-        isLovePinkTheme ? "bg-gradient-to-br from-pink-100 via-pink-200 to-rose-200" : "bg-background"
+        isLovePinkTheme ? "bg-gradient-to-br from-pink-100 via-pink-200 to-rose-200" : (isDefaultBg ? "" : "bg-background")
       )}
-      style={{ 
-        backgroundImage: !isLovePinkTheme && chatBackgroundStyle === 'image' ? `url(${chatBackgroundUrl})` : !isLovePinkTheme && chatBackgroundUrl?.startsWith('linear-gradient') ? chatBackgroundUrl : 'none',
-        backgroundColor: !isLovePinkTheme && (chatBackgroundStyle === 'color' && !chatBackgroundUrl?.startsWith('linear-gradient') ? chatBackgroundUrl : undefined) as any,
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-        backgroundAttachment: 'fixed'
-      }}
+      style={defaultBgStyle}
     >
       {/* Background Overlay for better readability */}
       {chatBackgroundUrl && !isLovePinkTheme && (
@@ -1439,6 +1633,7 @@ export default function IndividualChat({ isGroup = false }: { isGroup?: boolean 
         />
       )}
 
+
       {/* Group Settings Dialog */}
       <Dialog open={isGroupSettingsOpen} onOpenChange={setIsGroupSettingsOpen}>
         <DialogContent className="max-w-md max-h-[80vh] flex flex-col p-0">
@@ -1567,40 +1762,47 @@ export default function IndividualChat({ isGroup = false }: { isGroup?: boolean 
             )}
             {/* Voice Preview Bar */}
             {voicePreviewBlob && voicePreviewUrl && (
-              <div className="flex-1 flex items-center gap-2 px-1">
-                {/* Delete */}
-                <button
-                  type="button"
-                  onClick={cancelRecording}
-                  className="shrink-0 w-8 h-8 flex items-center justify-center rounded-full text-red-400 hover:bg-red-500/10 active:scale-90 transition-all"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
-                {/* Waveform preview card */}
-                <div className="flex-1 flex items-center gap-2 bg-primary/10 border border-primary/20 rounded-2xl px-3 py-1.5 min-w-0">
-                  <Volume2 className="w-4 h-4 text-primary shrink-0" />
-                  <div className="flex items-end gap-[2px] flex-1">
-                    {Array.from({ length: 20 }).map((_, i) => (
-                      <div
-                        key={i}
-                        className="bg-primary/60 rounded-full w-[3px] shrink-0"
-                        style={{ height: `${6 + Math.sin(i * 0.9) * 5 + Math.random() * 6}px` }}
-                      />
-                    ))}
+              <div className="flex-1 flex flex-col gap-1.5 px-1 py-1">
+                <div className="flex-1 flex items-center gap-2">
+                  {/* Delete */}
+                  <button
+                    type="button"
+                    onClick={cancelRecording}
+                    className="shrink-0 w-8 h-8 flex items-center justify-center rounded-full text-red-400 hover:bg-red-500/10 active:scale-90 transition-all"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                  {/* Waveform preview card */}
+                  <div className="flex-1 flex items-center gap-2 bg-primary/10 border border-primary/20 rounded-2xl px-3 py-1.5 min-w-0">
+                    <Volume2 className="w-4 h-4 text-primary shrink-0" />
+                    <div className="flex items-end gap-[2px] flex-1">
+                      {Array.from({ length: 20 }).map((_, i) => (
+                        <div
+                          key={i}
+                          className="bg-primary/60 rounded-full w-[3px] shrink-0"
+                          style={{ height: `${6 + Math.sin(i * 0.9) * 5 + Math.random() * 6}px` }}
+                        />
+                      ))}
+                    </div>
+                    <span className="text-[11px] text-primary font-bold shrink-0">{formatTime(recordingTime)}</span>
                   </div>
-                  <span className="text-[11px] text-primary font-bold shrink-0">{formatTime(recordingTime)}</span>
+                  {/* Send */}
+                  <button
+                    type="button"
+                    onClick={sendVoicePreview}
+                    disabled={uploading}
+                    className="shrink-0 w-10 h-10 flex items-center justify-center rounded-full bg-primary text-primary-foreground active:scale-90 transition-all shadow-md disabled:opacity-60"
+                  >
+                    {uploading
+                      ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      : <Send className="w-4 h-4" />}
+                  </button>
                 </div>
-                {/* Send */}
-                <button
-                  type="button"
-                  onClick={sendVoicePreview}
-                  disabled={uploading}
-                  className="shrink-0 w-10 h-10 flex items-center justify-center rounded-full bg-primary text-primary-foreground active:scale-90 transition-all shadow-md disabled:opacity-60"
-                >
-                  {uploading
-                    ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    : <Send className="w-4 h-4" />}
-                </button>
+                {translatedTextPreview && (
+                  <div className="text-[10px] text-primary font-bold px-3 py-1 bg-primary/5 rounded-xl border border-primary/10 select-all text-left truncate w-full animate-in fade-in duration-200">
+                    📝 Translation: "{translatedTextPreview}"
+                  </div>
+                )}
               </div>
             )}
             {/* Active Recording Bar */}
@@ -1646,10 +1848,6 @@ export default function IndividualChat({ isGroup = false }: { isGroup?: boolean 
             
             {!content.trim() && !isRecording && !selectedGif && !voicePreviewBlob && (
               <div className="flex items-center gap-2 pr-1 relative">
-                  <EmojiBlast
-                    onSend={(emoji) => sendMessage(undefined, undefined, emoji)}
-                    isLovePinkTheme={isLovePinkTheme}
-                  />
                   <GifSelector 
                     onSelect={(url) => setSelectedGif(url)} 
                     trigger={ 

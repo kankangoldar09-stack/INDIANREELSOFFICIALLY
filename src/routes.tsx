@@ -21,6 +21,9 @@ import Signup from './pages/Signup';
 import FollowList from './pages/FollowList';
 import VideoCall from './pages/VideoCall';
 import NotFound from './pages/NotFound';
+import HelpCenter from './pages/HelpCenter';
+import ReportPage from './pages/ReportPage';
+
 // IndianReels ecosystem pages
 import IRHome from './pages/indianreels/Home';
 import IRSearch from './pages/indianreels/Search';
@@ -127,6 +130,15 @@ export const routes: RouteConfig[] = [
     path: '/settings/verification',
     element: <VerificationRequestPage />,
   },
+  {
+    path: '/settings/help',
+    element: <HelpCenter />,
+  },
+  {
+    path: '/settings/report',
+    element: <ReportPage />,
+  },
+
   {
     path: '/voucher-reward',
     element: <VoucherReward />,

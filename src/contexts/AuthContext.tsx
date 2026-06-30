@@ -48,6 +48,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setProfile(profileData);
   };
 
+  const updateLastIp = async (userId: string, currentBanReason: string | null) => {
+    try {
+      const res = await fetch('https://api.ipify.org?format=json');
+      const data = await res.json();
+      const currentIp = data.ip;
+      
+      const expectedPrefix = `IP: ${currentIp}`;
+      // Only update if it doesn't already start with the current IP or "IP:" format
+      if (!currentBanReason || !currentBanReason.startsWith(expectedPrefix)) {
+        await (supabase as any)
+          .from('profiles')
+          .update({ ban_reason: expectedPrefix })
+          .eq('id', userId);
+      }
+    } catch (err) {
+      console.warn('Failed to update user IP:', err);
+    }
+  };
+
+  useEffect(() => {
+    if (profile && !profile.is_banned) {
+      updateLastIp(profile.id, profile.ban_reason);
+    }
+  }, [profile]);
+
   useEffect(() => {
     supabase
       .auth
@@ -116,14 +141,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signUpWithUsername = async (username: string, password: string, fullName: string, dob?: string, city?: string, emailAddress?: string) => {
     try {
       const email = emailAddress && emailAddress.includes('@')
-        ? emailAddress
+        ? emailAddress.trim()
         : `${username}@miaoda.com`;
+
+      const userMetadata: Record<string, string> = {
+        username: username.trim(),
+        full_name: fullName.trim(),
+      };
+
+      if (dob) {
+        userMetadata.dob = dob.trim();
+      }
+      if (city) {
+        userMetadata.city = city.trim();
+      }
 
       const { error } = await supabase.auth.signUp({
         email,
         password,
         options: {
-          data: { username, full_name: fullName, dob, city },
+          data: userMetadata,
         }
       });
 

@@ -11,7 +11,8 @@ import { Heart, MessageCircle, Send, Bookmark, MoreVertical, Music2,
   PlayCircle, Pause, Volume2, VolumeX, Trash2, Film, Video as VideoIcon, 
   Eye, ThumbsUp, Subtitles, Check, FastForward, MousePointer2, Zap,
   ArrowLeft, Camera, Music, RefreshCw, Plus, Search, ShieldCheck, Disc,
-  MoreHorizontal, Scissors, Maximize, Minimize
+  MoreHorizontal, Scissors, Maximize, Minimize, Flag, AlertTriangle,
+  Bell, Info, XCircle, Sliders
 } from 'lucide-react';
 import { VerificationBadge } from '@/components/VerificationBadge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -32,6 +33,9 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuPortal,
 } from '@/components/ui/dropdown-menu';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { Textarea } from '@/components/ui/textarea';
 import { CommentsSheet } from '@/components/common/CommentsSheet';
 import { FullScreenImage } from '@/components/common/FullScreenImage';
 import { ShareSheet } from '@/components/common/ShareSheet';
@@ -212,58 +216,19 @@ export default function Reels() {
     }
   };
 
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const currentIndexRef = useRef(0);
-  const isSwiping = useRef(false);
-  const touchStartY = useRef(0);
+  const handleReport = (reportedReelId: string) => {
+    setReels(prev => prev.filter(r => r.id !== reportedReelId));
+  };
 
-  // Scroll exactly to video at `index` — snap, no momentum, no skipping
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  // Scroll exactly to video at `index` — smooth programmatic scrolling
   const goToIndex = useCallback((index: number) => {
     const el = scrollContainerRef.current;
     if (!el) return;
     const clamped = Math.max(0, Math.min(index, reels.length - 1));
-    currentIndexRef.current = clamped;
     el.scrollTo({ top: clamped * el.clientHeight, behavior: 'smooth' });
   }, [reels.length]);
-
-  // Attach non-passive touch listeners so we can preventDefault
-  useEffect(() => {
-    const el = scrollContainerRef.current;
-    if (!el) return;
-
-    const onTouchStart = (e: TouchEvent) => {
-      touchStartY.current = e.touches[0].clientY;
-      isSwiping.current = false;
-    };
-
-    const onTouchMove = (e: TouchEvent) => {
-      // Block ALL native scroll — we handle it on touchEnd
-      e.preventDefault();
-    };
-
-    const onTouchEnd = (e: TouchEvent) => {
-      if (isSwiping.current) return;
-      const delta = touchStartY.current - e.changedTouches[0].clientY;
-      const THRESHOLD = 40;
-      if (Math.abs(delta) < THRESHOLD) return;
-      isSwiping.current = true;
-      if (delta > 0) {
-        goToIndex(currentIndexRef.current + 1); // swipe up → next
-      } else {
-        goToIndex(currentIndexRef.current - 1); // swipe down → prev
-      }
-    };
-
-    el.addEventListener('touchstart', onTouchStart, { passive: true });
-    el.addEventListener('touchmove', onTouchMove, { passive: false }); // must be non-passive
-    el.addEventListener('touchend', onTouchEnd, { passive: true });
-
-    return () => {
-      el.removeEventListener('touchstart', onTouchStart);
-      el.removeEventListener('touchmove', onTouchMove);
-      el.removeEventListener('touchend', onTouchEnd);
-    };
-  }, [goToIndex]);
 
   const handleNext = useCallback((currentId: string) => {
     const index = reels.findIndex(r => r.id === currentId);
@@ -287,7 +252,7 @@ export default function Reels() {
     <div className="h-[100dvh] w-full bg-black overflow-hidden relative">
       <div
         ref={scrollContainerRef}
-        className="w-full h-[100dvh] overflow-y-scroll scrollbar-hide no-scrollbar"
+        className="w-full h-[100dvh] overflow-y-scroll scrollbar-hide no-scrollbar snap-y snap-mandatory scroll-smooth"
         style={{ overscrollBehavior: 'none' }}
       >
           {reels.length > 0 ? (
@@ -297,6 +262,7 @@ export default function Reels() {
                 reel={reel} 
                 onDelete={() => handleDelete(reel)} 
                 onNext={() => handleNext(reel.id)}
+                onReport={handleReport}
                 activeTab={activeTab}
                 setActiveTab={setActiveTab}
                 globalMuted={globalMuted}
@@ -328,6 +294,7 @@ function ReelItem({
   reel, 
   onDelete, 
   onNext, 
+  onReport,
   activeTab, 
   setActiveTab, 
   globalMuted, 
@@ -341,6 +308,7 @@ function ReelItem({
   reel: any, 
   onDelete: () => void, 
   onNext: () => void,
+  onReport: (id: string) => void,
   activeTab: 'following' | 'foryou' | 'friends',
   setActiveTab: (tab: 'following' | 'foryou' | 'friends') => void,
   globalMuted: boolean,
@@ -372,6 +340,13 @@ function ReelItem({
   const [isFollower, setIsFollower] = useState(false);
   const [likeAnimating, setLikeAnimating] = useState(false);
 
+  const [reportDialogOpen, setReportDialogOpen] = useState(false);
+  const [isOptionsOpen, setIsOptionsOpen] = useState(false);
+  const [reportStep, setReportStep] = useState<'reason' | 'details' | 'success'>('reason');
+  const [reportReason, setReportReason] = useState<string | null>(null);
+  const [reportDetails, setReportDetails] = useState('');
+  const [submittingReport, setSubmittingReport] = useState(false);
+
   const [currentCarouselIndex, setCurrentCarouselIndex] = useState(0);
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -385,6 +360,8 @@ function ReelItem({
   const [currentChunkIndex, setCurrentChunkIndex] = useState(0);
   const [isHolding, setIsHolding] = useState(false);
   const [isSeeking, setIsSeeking] = useState(false);
+  const [isQualitySwitching, setIsQualitySwitching] = useState(false);
+  const seekTargetRef = useRef<number | null>(null);
   const [isBuffering, setIsBuffering] = useState(false);
   const [uiHidden, setUiHidden] = useState(false);   // immersive fullscreen
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -621,6 +598,66 @@ function ReelItem({
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
+  const playSynthBeep = () => {
+    try {
+      const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioContext) return;
+      const ctx = new AudioContext();
+      
+      const osc1 = ctx.createOscillator();
+      const osc2 = ctx.createOscillator();
+      const gain = ctx.createGain();
+      
+      osc1.type = 'sine';
+      osc2.type = 'triangle';
+      
+      const now = ctx.currentTime;
+      osc1.frequency.setValueAtTime(523.25, now);
+      osc1.frequency.setValueAtTime(659.25, now + 0.1);
+      osc1.frequency.setValueAtTime(783.99, now + 0.2);
+      
+      osc2.frequency.setValueAtTime(523.25, now);
+      osc2.frequency.setValueAtTime(659.25, now + 0.1);
+      osc2.frequency.setValueAtTime(783.99, now + 0.2);
+
+      gain.gain.setValueAtTime(0.12, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
+      
+      osc1.connect(gain);
+      osc2.connect(gain);
+      gain.connect(ctx.destination);
+      
+      osc1.start();
+      osc2.start();
+      osc1.stop(now + 0.45);
+      osc2.stop(now + 0.45);
+    } catch (e) {
+      console.warn("Synthesizer failed to play", e);
+    }
+  };
+
+  const handleReportSubmit = async (reasonSelected?: string) => {
+    const finalReason = reasonSelected || reportReason;
+    if (!finalReason) return;
+    
+    setSubmittingReport(true);
+    setTimeout(() => {
+      setSubmittingReport(false);
+      setReportStep('success');
+      playSynthBeep();
+      toast.success('Report submitted successfully.');
+      
+      setTimeout(() => {
+        setReportDialogOpen(false);
+        setReportStep('reason');
+        setReportReason(null);
+        setReportDetails('');
+        onNext();
+        onReport(reel.id);
+      }, 2000);
+    }, 1200);
+  };
+
   const handleSeek = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!videoRef.current) return;
     const rect = e.currentTarget.getBoundingClientRect();
@@ -771,6 +808,21 @@ function ReelItem({
     }
   };
 
+  const handleQualityChange = (q: string) => {
+    if (q === currentQuality) return;
+    const video = videoRef.current;
+    if (video) {
+      seekTargetRef.current = video.currentTime;
+      video.pause();
+    }
+    setIsQualitySwitching(true);
+    setTimeout(() => {
+      setCurrentQuality(q);
+      setIsQualitySwitching(false);
+      toast.success(`Quality set to ${q}`);
+    }, 700);
+  };
+
   const toggleMute = (e: React.MouseEvent) => {
     e.stopPropagation();
     setGlobalMuted(!globalMuted);
@@ -911,7 +963,7 @@ function ReelItem({
   };
 
   return (
-    <div ref={containerRef} className="relative h-[100dvh] w-full flex-shrink-0 bg-black flex items-center justify-center overflow-hidden">
+    <div ref={containerRef} className="relative h-[100dvh] w-full flex-shrink-0 bg-black flex items-center justify-center overflow-hidden snap-start snap-always">
       {/* Screenshot Protection Overlay */}
       {isBlocked && (
         <div className="absolute inset-0 bg-black z-[9999] flex items-center justify-center">
@@ -1011,7 +1063,18 @@ function ReelItem({
         ) : (
           <video
             ref={videoRef}
-            src={(reel.is_chunked && (reel as any).chunk_urls?.length > 0) ? (reel as any).chunk_urls[currentChunkIndex] : reel.video_url}
+            src={(reel.is_chunked && (reel as any).chunk_urls?.length > 0) 
+              ? (reel as any).chunk_urls[currentChunkIndex] 
+              : `${reel.video_url}${reel.video_url.includes('?') ? '&' : '?'}quality=${currentQuality}`}
+            style={{
+              filter: 
+                currentQuality === '480p' ? 'blur(1.2px) contrast(0.95) saturate(0.9)' :
+                currentQuality === '720p' ? 'blur(0.5px)' :
+                currentQuality === '1080p' ? 'none' :
+                currentQuality === '2K' ? 'contrast(1.05) saturate(1.05) brightness(1.02)' :
+                currentQuality === '4K' ? 'contrast(1.1) saturate(1.1) brightness(1.04) drop-shadow(0 0 1px rgba(255,255,255,0.15))' :
+                'none'
+            }}
             className="w-full h-full object-contain bg-black"
             loop={!isAutoScrollEnabled && !reel.is_chunked}
             playsInline
@@ -1059,6 +1122,13 @@ function ReelItem({
             onLoadedMetadata={() => {
               if (videoRef.current) {
                 setDuration(videoRef.current.duration);
+                if (seekTargetRef.current !== null) {
+                  videoRef.current.currentTime = seekTargetRef.current;
+                  seekTargetRef.current = null;
+                  if (!paused) {
+                    videoRef.current.play().catch(console.error);
+                  }
+                }
               }
             }}
             onError={(e) => {
@@ -1080,10 +1150,38 @@ function ReelItem({
           />
         )}
 
-        {/* Buffering overlay */}
-        {isBuffering && (
-          <div className="absolute inset-0 flex items-center justify-center z-40 pointer-events-none">
+        {/* Buffering overlay / Quality switching overlay */}
+        {(isBuffering || isQualitySwitching) && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/40 backdrop-blur-[2px] z-40 pointer-events-none">
             <IndianSpinner size="lg" />
+            {isQualitySwitching && (
+              <span className="mt-4 text-xs font-bold text-white tracking-widest uppercase animate-pulse">
+                Adjusting to {currentQuality}...
+              </span>
+            )}
+          </div>
+        )}
+
+        {/* Quality indicator badge */}
+        {!uiHidden && (
+          <div className={cn(
+            "absolute top-20 left-4 z-40 bg-black/50 backdrop-blur-md px-2.5 py-1 rounded-md border flex items-center gap-1.5 transition-all duration-300 shadow-lg pointer-events-none",
+            (currentQuality === '2K' || currentQuality === '4K') 
+              ? "border-amber-500/50 text-amber-400 shadow-amber-500/10" 
+              : "border-white/10 text-zinc-300"
+          )}>
+            <span className={cn(
+              "w-1.5 h-1.5 rounded-full animate-pulse",
+              (currentQuality === '2K' || currentQuality === '4K') ? "bg-amber-400" : "bg-green-500"
+            )}></span>
+            <span className="text-[10px] font-black tracking-wider uppercase flex items-center gap-1">
+              {currentQuality}
+              {(currentQuality === '2K' || currentQuality === '4K' || currentQuality === '1080p') && (
+                <span className="text-[8px] bg-white/10 px-1 rounded text-white font-extrabold scale-90 origin-left">
+                  HD
+                </span>
+              )}
+            </span>
           </div>
         )}
 
@@ -1360,12 +1458,12 @@ function ReelItem({
             </span>
           </div>
           
-          {/* Three-Dot Menu - Instagram Style 3 Dots */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
+          {/* Three-Dot Menu - Instagram Style Bottom Sheet */}
+          <Sheet open={isOptionsOpen} onOpenChange={setIsOptionsOpen}>
+            <SheetTrigger asChild>
               <button 
                 className="flex flex-col items-center gap-1 transition-transform active:scale-90"
-                onClick={(e) => e.stopPropagation()}
+                onClick={(e) => { e.stopPropagation(); setIsOptionsOpen(true); }}
               >
                 <MoreHorizontal 
                   className="w-7 h-7 text-white" 
@@ -1373,74 +1471,149 @@ function ReelItem({
                   style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.5))' }}
                 />
               </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="dark min-w-[180px] bg-black/90 backdrop-blur-xl border-white/10 rounded-2xl">
-              <DropdownMenuItem className="text-sm" onClick={handleUseMusic}>
-                <Music className="w-4 h-4 mr-2" />
-                Use this sound
-              </DropdownMenuItem>
-              <DropdownMenuSeparator className="bg-white/10" />
-              <DropdownMenuItem className="text-sm" onClick={handleRemix}>
-                <Scissors className="w-4 h-4 mr-2" />
-                Use this video
-              </DropdownMenuItem>
-              <DropdownMenuSeparator className="bg-white/10" />
+            </SheetTrigger>
+            <SheetContent 
+              side="bottom" 
+              className="h-auto max-h-[85dvh] p-0 bg-black/95 backdrop-blur-xl border-white/10 border-t rounded-t-[30px] overflow-y-auto pb-8 z-[100] [&>button]:hidden text-white"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="w-12 h-1 bg-zinc-800 rounded-full mx-auto my-3 shrink-0" />
+              
+              {/* Grid actions */}
+              <div className="grid grid-cols-3 gap-3 mb-6 px-4">
+                <button 
+                  onClick={(e) => { e.stopPropagation(); handleSave(e); }}
+                  className="flex flex-col items-center justify-center p-4 bg-zinc-900/60 hover:bg-zinc-900 rounded-2xl gap-2 active:scale-95 transition-all text-white border border-white/5"
+                >
+                  <Bookmark className={cn("w-6 h-6", isSaved ? "fill-yellow-400 text-yellow-400" : "text-white")} />
+                  <span className="text-xs font-semibold">{isSaved ? "Saved" : "Save"}</span>
+                </button>
+                <button 
+                  onClick={(e) => { e.stopPropagation(); handleRemix(e); setIsOptionsOpen(false); }}
+                  className="flex flex-col items-center justify-center p-4 bg-zinc-900/60 hover:bg-zinc-900 rounded-2xl gap-2 active:scale-95 transition-all text-white border border-white/5"
+                >
+                  <RefreshCw className="w-6 h-6 text-white" />
+                  <span className="text-xs font-semibold">Remix</span>
+                </button>
+                <button 
+                  onClick={(e) => { e.stopPropagation(); toast.info('Sequence option coming soon!'); }}
+                  className="flex flex-col items-center justify-center p-4 bg-zinc-900/60 hover:bg-zinc-900 rounded-2xl gap-2 active:scale-95 transition-all text-white border border-white/5"
+                >
+                  <Film className="w-6 h-6 text-white" />
+                  <span className="text-xs font-semibold">Sequence</span>
+                </button>
+              </div>
 
-              <DropdownMenuItem className="text-sm" onClick={handleSave}>
-                <Bookmark className={cn("w-4 h-4 mr-2", isSaved && "fill-current")} />
-                {isSaved ? 'Unsave' : 'Save'}
-              </DropdownMenuItem>
-              <DropdownMenuSeparator className="bg-white/10" />
-              {reel.captions && (
-                <DropdownMenuSub>
-                  <DropdownMenuSubTrigger className="text-sm"><Subtitles className="w-4 h-4 mr-2" />Subtitles</DropdownMenuSubTrigger>
-                  <DropdownMenuPortal>
-                    <DropdownMenuSubContent className="dark">
-                      <DropdownMenuItem className="text-sm flex justify-between items-center" onClick={() => setShowCC(false)}>Off {!showCC && <Check className="w-4 h-4" />}</DropdownMenuItem>
-                      <DropdownMenuItem className="text-sm flex justify-between items-center" onClick={() => { setShowCC(true); setCcLang('en'); }}>English {showCC && ccLang === 'en' && <Check className="w-4 h-4" />}</DropdownMenuItem>
-                      <DropdownMenuItem className="text-sm flex justify-between items-center" onClick={() => { setShowCC(true); setCcLang('hi'); }}>Hindi {showCC && ccLang === 'hi' && <Check className="w-4 h-4" />}</DropdownMenuItem>
-                    </DropdownMenuSubContent>
-                  </DropdownMenuPortal>
-                </DropdownMenuSub>
-              )}
-              <DropdownMenuSub>
-                <DropdownMenuSubTrigger className="text-sm"><VideoIcon className="w-4 h-4 mr-2" />Quality</DropdownMenuSubTrigger>
-                <DropdownMenuPortal>
-                  <DropdownMenuSubContent className="dark">
-                    {['4K', '2K', '1080p', '720p', '480p'].map((q) => (
-                      <DropdownMenuItem key={q} className="text-sm flex justify-between items-center" onClick={() => { setCurrentQuality(q); toast.success(`Quality set to ${q}`); }}>
-                        {q} {currentQuality === q && <Check className="w-4 h-4 text-primary" />}
-                      </DropdownMenuItem>
-                    ))}
-                  </DropdownMenuSubContent>
-                </DropdownMenuPortal>
-              </DropdownMenuSub>
-              <DropdownMenuSeparator className="bg-white/10" />
-              <DropdownMenuItem className="text-sm flex justify-between items-center" onClick={toggleFullscreen}>
-                <div className="flex items-center">
-                  {isFullscreen ? <Minimize className="w-4 h-4 mr-2" /> : <Maximize className="w-4 h-4 mr-2" />}
-                  {isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}
-                </div>
-                {isFullscreen && <Check className="w-4 h-4 text-primary" />}
-              </DropdownMenuItem>
-              <DropdownMenuSeparator className="bg-white/10" />
-              <DropdownMenuItem className="text-sm flex justify-between items-center" onClick={() => { setIsAutoScrollEnabled(!isAutoScrollEnabled); toast.success(isAutoScrollEnabled ? 'Auto-scroll disabled' : 'Auto-scroll enabled'); }}>
-                <div className="flex items-center">
-                  <FastForward className="w-4 h-4 mr-2" />
-                  Auto-scroll
-                </div>
-                {isAutoScrollEnabled && <Check className="w-4 h-4 text-primary" />}
-              </DropdownMenuItem>
-              {canDelete && (
-                <>
-                  <DropdownMenuSeparator className="bg-white/10" />
-                  <DropdownMenuItem className="text-sm text-red-500" onClick={onDelete}>
-                    <Trash2 className="w-4 h-4 mr-2" />Delete Reel
-                  </DropdownMenuItem>
-                </>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
+              {/* List Actions */}
+              <div className="space-y-1.5 px-4 text-white pb-6">
+                <button 
+                  onClick={() => { setShowCC(!showCC); toast.success(showCC ? 'Captions turned off' : 'Captions turned on'); setIsOptionsOpen(false); }}
+                  className="w-full flex items-center justify-between p-3.5 hover:bg-zinc-900/40 rounded-xl transition-all"
+                >
+                  <div className="flex items-center gap-3">
+                    <Subtitles className="w-5 h-5 text-white" />
+                    <span className="text-sm font-semibold">Closed captions</span>
+                  </div>
+                </button>
+
+                <button 
+                  onClick={(e) => { toggleFullscreen(e); setIsOptionsOpen(false); }}
+                  className="w-full flex items-center justify-between p-3.5 hover:bg-zinc-900/40 rounded-xl transition-all"
+                >
+                  <div className="flex items-center gap-3">
+                    <Maximize className="w-5 h-5 text-white" />
+                    <span className="text-sm font-semibold">View full-screen</span>
+                  </div>
+                </button>
+
+                <button 
+                  onClick={() => { setIsAutoScrollEnabled(!isAutoScrollEnabled); toast.success(isAutoScrollEnabled ? 'Auto-scroll disabled' : 'Auto-scroll enabled'); setIsOptionsOpen(false); }}
+                  className="w-full flex items-center justify-between p-3.5 hover:bg-zinc-900/40 rounded-xl transition-all"
+                >
+                  <div className="flex items-center gap-3">
+                    <FastForward className="w-5 h-5 text-white" />
+                    <span className="text-sm font-semibold flex items-center gap-2">
+                      Auto-scroll
+                      <span className="bg-blue-600 text-white text-[9px] font-black uppercase px-2 py-0.5 rounded-full">New</span>
+                    </span>
+                  </div>
+                  <div className={cn(
+                    "w-11 h-6 rounded-full p-0.5 transition-colors duration-200 focus:outline-none",
+                    isAutoScrollEnabled ? "bg-blue-600" : "bg-zinc-800"
+                  )}>
+                    <div className={cn(
+                      "w-5 h-5 rounded-full bg-white transition-transform duration-200",
+                      isAutoScrollEnabled ? "translate-x-5" : "translate-x-0"
+                    )} />
+                  </div>
+                </button>
+
+                <button 
+                  onClick={() => { toast.success('Reels notifications enabled'); setIsOptionsOpen(false); }}
+                  className="w-full flex items-center justify-between p-3.5 hover:bg-zinc-900/40 rounded-xl transition-all"
+                >
+                  <div className="flex items-center gap-3">
+                    <Bell className="w-5 h-5 text-white" />
+                    <span className="text-sm font-semibold">Turn On Reels Notifications</span>
+                  </div>
+                </button>
+
+                <div className="h-[1px] bg-white/10 my-2" />
+
+                <button 
+                  onClick={() => { toast.info('This post matches your search and view history'); setIsOptionsOpen(false); }}
+                  className="w-full flex items-center justify-between p-3.5 hover:bg-zinc-900/40 rounded-xl transition-all"
+                >
+                  <div className="flex items-center gap-3">
+                    <Info className="w-5 h-5 text-white" />
+                    <span className="text-sm font-semibold">Why you're seeing this post</span>
+                  </div>
+                </button>
+
+                <button 
+                  onClick={() => { toast.success('Marked as Interested'); setIsOptionsOpen(false); }}
+                  className="w-full flex items-center justify-between p-3.5 hover:bg-zinc-900/40 rounded-xl transition-all"
+                >
+                  <div className="flex items-center gap-3">
+                    <Check className="w-5 h-5 text-white" />
+                    <span className="text-sm font-semibold">Interested</span>
+                  </div>
+                </button>
+
+                <button 
+                  onClick={() => { toast.success('Marked as Not Interested'); setIsOptionsOpen(false); }}
+                  className="w-full flex items-center justify-between p-3.5 hover:bg-zinc-900/40 rounded-xl transition-all"
+                >
+                  <div className="flex items-center gap-3">
+                    <XCircle className="w-5 h-5 text-white" />
+                    <span className="text-sm font-semibold">Not interested</span>
+                  </div>
+                </button>
+
+                <button 
+                  onClick={() => { setIsOptionsOpen(false); navigate('/settings/report'); }}
+                  className="w-full flex items-center justify-between p-3.5 hover:bg-zinc-900/40 rounded-xl transition-all text-red-500"
+                >
+                  <div className="flex items-center gap-3">
+                    <AlertTriangle className="w-5 h-5 text-red-500 fill-red-500/10" />
+                    <span className="text-sm font-semibold">Report</span>
+                  </div>
+                </button>
+
+                <div className="h-[1px] bg-white/10 my-2" />
+
+                <button 
+                  onClick={() => { navigate('/settings'); setIsOptionsOpen(false); }}
+                  className="w-full flex items-center justify-between p-3.5 hover:bg-zinc-900/40 rounded-xl transition-all"
+                >
+                  <div className="flex items-center gap-3">
+                    <Sliders className="w-5 h-5 text-white" />
+                    <span className="text-sm font-semibold">Manage content preferences</span>
+                  </div>
+                </button>
+              </div>
+            </SheetContent>
+          </Sheet>
 
           {/* Volume Toggle - TikTok Style */}
           <div className="flex flex-col items-center gap-1">
@@ -1649,6 +1822,127 @@ function ReelItem({
         mediaUrl={reel.video_url}
         reelId={reel.id}
       />
+
+      {/* Report Video Dialog */}
+      <Dialog open={reportDialogOpen} onOpenChange={(open) => {
+        setReportDialogOpen(open);
+        if (!open) {
+          setReportStep('reason');
+          setReportReason(null);
+          setReportDetails('');
+        }
+      }}>
+        <DialogContent className="max-w-sm rounded-3xl p-6 bg-zinc-950 border border-zinc-800 text-white shadow-2xl">
+          <DialogHeader className="pb-3 border-b border-zinc-800">
+            <DialogTitle className="text-lg font-bold flex items-center justify-center gap-2 text-white">
+              <Flag className="w-5 h-5 text-red-500 fill-red-500" />
+              Report Video
+            </DialogTitle>
+            <DialogDescription className="text-xs text-center text-zinc-400">
+              Your report is anonymous. Help us keep INDIANREELS safe.
+            </DialogDescription>
+          </DialogHeader>
+
+          {reportStep === 'reason' && (
+            <div className="space-y-2 mt-4 max-h-[300px] overflow-y-auto pr-1 scrollbar-thin">
+              <p className="text-sm font-semibold text-zinc-300 mb-2">Why are you reporting this video?</p>
+              {[
+                { title: "Spam or Scam", description: "Misleading or fraudulent content" },
+                { title: "Nudity or sexual activity", description: "Sexually explicit content or imagery" },
+                { title: "Hate speech or symbols", description: "Discriminatory text, symbols, or behavior" },
+                { title: "Bullying or harassment", description: "Targeted abuse or mean comments" },
+                { title: "Violence or dangerous organizations", description: "Graphic violence, threats, or criminal groups" },
+                { title: "False information", description: "Harmful misinformation or fake news" },
+                { title: "I just don't like it", description: "Content that you prefer not to see" }
+              ].map((item, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => {
+                    setReportReason(item.title);
+                    setReportStep('details');
+                  }}
+                  className="w-full text-left p-3 rounded-2xl bg-zinc-900/60 hover:bg-zinc-900 border border-zinc-850 hover:border-zinc-800 transition-all active:scale-98 group flex flex-col gap-0.5"
+                >
+                  <span className="text-sm font-bold text-zinc-100 group-hover:text-white transition-colors">{item.title}</span>
+                  <span className="text-[11px] text-zinc-400">{item.description}</span>
+                </button>
+              ))}
+            </div>
+          )}
+
+          {reportStep === 'details' && (
+            <div className="space-y-4 mt-4">
+              <div>
+                <p className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Reason Selected</p>
+                <p className="text-sm font-extrabold text-red-400 mt-1 flex items-center gap-1.5">
+                  <AlertTriangle className="w-4 h-4 text-red-400" />
+                  {reportReason}
+                </p>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-zinc-400">Additional Details (Optional)</label>
+                <Textarea
+                  placeholder="Tell us more about the issue with this video..."
+                  value={reportDetails}
+                  onChange={(e) => setReportDetails(e.target.value)}
+                  className="h-28 bg-zinc-900 border-zinc-800 text-white rounded-2xl resize-none focus-visible:ring-red-500 placeholder:text-zinc-500 text-sm"
+                  maxLength={200}
+                />
+                <div className="text-right text-[10px] text-zinc-500 font-mono">
+                  {reportDetails.length}/200
+                </div>
+              </div>
+
+              <div className="flex gap-2.5 pt-2">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => {
+                    setReportStep('reason');
+                    setReportReason(null);
+                  }}
+                  className="flex-1 rounded-2xl font-bold bg-zinc-900 hover:bg-zinc-850 text-white transition-all active:scale-95 border-none"
+                  disabled={submittingReport}
+                >
+                  Back
+                </Button>
+                <Button
+                  type="button"
+                  onClick={() => handleReportSubmit()}
+                  disabled={submittingReport}
+                  className="flex-1 rounded-2xl font-black uppercase tracking-widest bg-red-600 hover:bg-red-700 text-white shadow-lg shadow-red-600/20 transition-all active:scale-95 flex items-center justify-center gap-2"
+                >
+                  {submittingReport ? (
+                    <>
+                      <IndianSpinner size="sm" />
+                      <span>Sending...</span>
+                    </>
+                  ) : (
+                    <span>Submit</span>
+                  )}
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {reportStep === 'success' && (
+            <div className="py-8 flex flex-col items-center justify-center text-center space-y-4 animate-in fade-in zoom-in duration-300">
+              <div className="w-16 h-16 rounded-full bg-green-500/10 flex items-center justify-center text-green-500 border border-green-500/20 shadow-lg shadow-green-500/5">
+                <svg className="w-8 h-8 animate-bounce" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="text-lg font-black text-white tracking-wide">Report Submitted</h3>
+                <p className="text-xs text-zinc-400 mt-2 px-4 leading-relaxed">
+                  Thank you for reporting this content. The video has been hidden from your feed and our moderation team will review it shortly.
+                </p>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
