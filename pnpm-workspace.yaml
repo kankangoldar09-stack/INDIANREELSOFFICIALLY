@@ -1,3 +1,6 @@
+allowBuilds:
+  protobufjs: true
+  zego-express-engine-webrtc: true
 catalog:
   "@react-three/drei": 9.122.0
   "@react-three/fiber": 8.18.0
