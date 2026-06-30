@@ -98,5 +98,11 @@
     "typescript": "~5.9.3",
     "vite": "npm:rolldown-vite@latest",
     "vite-plugin-svgr": "^4.5.0"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "protobufjs",
+      "zego-express-engine-webrtc"
+    ]
   }
 }
